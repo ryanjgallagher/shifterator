@@ -1,1 +1,1 @@
-# wordshift - Interpretable analysis of sentiment and divergence in texts
+# Word Shifts for Interpretable Text Analysis
