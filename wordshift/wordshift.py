@@ -2,17 +2,81 @@
 wordshift.py
 
 Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-Last updated: May 7th, 2018
+Last updated: May 15th, 2018
 """
 import os
 import sys
 import warnings
 import numpy as np
+import matplotlib.pyplot as plt
 from collections import Counter
 
-class sentiment_shift:
-    def __init__(self, reference_text, comparison_text, filenames=False,
-                 dictionary='labMT_english', stop_radius=1.0, middle_score=5.0):
+# TODO: use inheritance to clean up code
+# 1) word_shift -> (score_shift -> sentiment_shift) and (divergence_shift)
+#    divergence_shift doesn't have methods like get_avg_score
+# 2) Can word shift could be put into general word_shift class, or is the sentiment
+#    one too specialized?
+
+class word_shift:
+    def __init__(self, ref_text, comp_text, filenames=False):
+        """
+        ref_text: str or dict, if str and filenames=False, then the text is read
+                  in directliy and split on white space. If str and
+                  filenames=True, then text is read in line by line from the
+                  designated file and split on white space. If dict, then should
+                  be of the form where keys are words and values are frequencies
+                  of those words
+        comp_text: str or dict, of the same type as ref_text
+        filenames: bool, True if ref_text and comp_text are
+                   filenames of files with text to parse
+        """
+        # Load text into word2freq dictionaries
+        if isinstance(ref_text, dict) and isinstance(comp_text, dict):
+            self.word2freq_ref = text_ref
+            self.word2freq_comp = text_comp
+        elif isinstance(ref_text, basestring) and isinstance(comp_text, basestring):
+            if filenames is True:
+                self.word2freq_ref = get_word_freqs_from_file(ref_text)
+                self.word2freq_comp = get_word_freqs_from_file(comp_text)
+            elif filename is False:
+                self.word2freq_ref = dict(Counter(ref_text.split()))
+                self.word2freq_comp = dict(Counter(comp_text.split()))
+        else:
+            warning = 'Shift object was not given text, a file to parse, or '+\
+                      'word frequency dictionaries. Check input texts.'
+            warnings.warn(warning, Warning)
+            self.word2freq_ref = dict()
+            self.word2freq_comp = dict()
+        # Set vocab
+        self.vocab = (set(self.word2freq_ref.keys())\
+                      .union(set(self.word2freq_comp.keys())))
+
+        # TODO: add functions that allow you to easily update the word2freq
+        #       dictionaries. What input should be accepted for that?
+
+class divergence_shift(word_shift):
+    def __init__(self, ref_text, comp_text, filenames=False, divergence='jsd',
+                 alpha=1.5):
+        """
+        ref_text: str or dict, if str and filenames=False, then the text is read
+                in directliy and split on white space. If str and filenames=True,
+                then text is read in line by line from the designated file and
+                split on white space. If dict, then should be of the form where
+                keys are words and values are frequencies of those words. If
+                divergence='jsd', ref_text and comp_text are interchangeable
+        comp_text: str or dict, of the same type as ref_text. If divergence='jsd'
+                   ref_text and comp_text are interchangeable
+        filenames: bool, True if ref_text and comp_text are
+                   filenames of files with text to parse
+        divergence: str, type of divergence to calculate. Options: 'jsd','kld'
+        alpha: float, (0,2], order of generalized divergence
+        """
+        word_shift.__init__(self, ref_text, comp_text, filenames)
+        self.divergence = divergence
+
+class sentiment_shift(word_shift):
+    def __init__(self, ref, comp_text, filenames=False, dictionary='labMT_english',
+                 stop_radius=1.0, middle_score=5.0):
         """
         reference_text: str or dict, if str and filenames=False, then the text
                         is read in directliy and split on white space. If str
@@ -33,34 +97,16 @@ class sentiment_shift:
         middle_score: float, middle, neutral score of sentiment (not average)
                       denoting the center of the stop window
         """
+        # Note, in word_shift object reference_text is ref_text, comparison_text
+        # is comp_text
+        word_shift.__init__(reference_text, comparison_text, filenames)
         # Load sentiment dictionary
         self.stop_radius = stop_radius
         self.middle_score = middle_score
         self.word2sentiment = get_score_dictionary(dictionary, stop_radius,
                                                    middle_score)
-        # Load text into word2freq dictionaries
-        elif isinstance(reference_text,dict) and isinstance(comparison_text,dict):
-            self.word2freq_ref = reference_text
-            self.word2freq_comp = comparison_text
-        elif isinstance(reference_text,basestring)
-             and isinstance(comparison_text,basestring):
-            if filenames is True:
-                self.word2freq_ref = get_word_freqs_from_file(reference_text)
-                self.word2freq_comp = get_word_freqs_from_file(comparison_text)
-            elif filename is False:
-                self.word2freq_ref = dict(Counter(reference_text.split()))
-                self.word2freq_comp = dict(Counter(comparison_text.split()))
-        else:
-            warning = 'Shift object was not given text, a file to parse, or '+\
-                      'word frequency dictionaries. Check reference_text and'+\
-                      'comparison_text.'
-            warnings.warn(warning, Warning)
-            self.word2freq_ref = dict()
-            self.word2freq_comp = dict()
         # Set vocabulary from loaded words: (ref \cup comp) \cap sent_words
-        self.vocab = (set(self.word2freq_ref.keys())\
-                      .union(set(self.word2freq_comp.keys())))\
-                      .intersection(set(self.word2sentiment.keys()))
+        self.vocab = self.vocab.intersection(set(self.word2sentiment.keys()))
         if len(vocab) == 0:
             warning = 'No words in input texts are in score dictionary'
             warnings.warn(warning, Warning)
@@ -68,9 +114,6 @@ class sentiment_shift:
         self.word2p_diff = None
         self.word2s_diff = None
         self.word2shift_score = None
-
-    # TODO: add functions that allow you to easily update the word2freq
-    #       dictionaries. What input should be accepted for that?
 
     def get_average_sentiment(self, text='reference'):
         """
@@ -84,22 +127,18 @@ class sentiment_shift:
         ------
         average_sentiment: float, average sentiment of comparison or reference
         """
+        # Throw warning if word2freq dicts haven't been initialized
+        if (text=='reference' and self.word2freq_ref) is None\
+            or (text=='comparison' and self.word2freq_comp is None):
+            warning = 'Text has not been specified in word shift object. Please'\
+                      +'initialize object.'
+                warnings.warn(warning, Warn)
+                return
+        # Get average sentiment
         if text == 'reference':
-            if self.word2freq_ref is None:
-                warning = 'Reference text has not been specified in word shift'\
-                          +'object yet. Please initialize object.'
-                warnings.warn(warning, Warn)
-                return
-            else:
-                return self.get_weighted_score(self.word2freq_ref,self.word2sentiment)
+            return self.get_weighted_score(self.word2freq_ref,self.word2sentiment)
         elif text == 'comparison':
-            if self.word2freq_comp is None:
-                warning = 'Comparison text has not been specified in word shift'\
-                          +'object yet. Please initialize object.'
-                warnings.warn(warning, Warn)
-                return
-            else:
-                return self.get_weighted_score(self.word2freq_comp,self.word2sentiment)
+            return self.get_weighted_score(self.word2freq_comp,self.word2sentiment)
         else:
             warning = "Please specify either text='reference' or 'comparison'."
             warnings.warn(warning, Warning)
