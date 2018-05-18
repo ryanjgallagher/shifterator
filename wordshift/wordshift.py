@@ -2,7 +2,7 @@
 wordshift.py
 
 Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-Last updated: May 15th, 2018
+Last updated: May 17th, 2018
 """
 import os
 import sys
@@ -15,25 +15,32 @@ from collections import Counter
 # 1) word_shift -> (score_shift -> sentiment_shift) and (divergence_shift)
 #    divergence_shift doesn't have methods like get_avg_score
 # 2) Can word shift could be put into general word_shift class, or is the sentiment
-#    one too specialized?
+#    one too specialized? You could pass in the scores if you make them "negative"
+#    before passing to the general one. And then you could clean up the labels
+#    in each by making that part of each shift's own method
 
 class word_shift:
     def __init__(self, ref_text, comp_text, filenames=False):
         """
+        General word shift object from which other word shift objects inherent.
+        This object cannot be used on its own to calculate word shift scores.
+
         ref_text: str or dict, if str and filenames=False, then the text is read
                   in directliy and split on white space. If str and
                   filenames=True, then text is read in line by line from the
                   designated file and split on white space. If dict, then should
                   be of the form where keys are words and values are frequencies
                   of those words
-        comp_text: str or dict, of the same type as ref_text
-        filenames: bool, True if ref_text and comp_text are
-                   filenames of files with text to parse
+        comp_text: str or dict, of the same type as ref_text. Word shift
+                   scores will be in terms of how the comparison text differs
+                   from the reference text
+        filenames: bool, True if ref_text and comp_text are filenames of files
+                         with text to parse
         """
         # Load text into word2freq dictionaries
         if isinstance(ref_text, dict) and isinstance(comp_text, dict):
-            self.word2freq_ref = text_ref
-            self.word2freq_comp = text_comp
+            self.word2freq_ref = ref_text
+            self.word2freq_comp = comp_text
         elif isinstance(ref_text, basestring) and isinstance(comp_text, basestring):
             if filenames is True:
                 self.word2freq_ref = get_word_freqs_from_file(ref_text)
@@ -50,6 +57,8 @@ class word_shift:
         # Set vocab
         self.vocab = (set(self.word2freq_ref.keys())\
                       .union(set(self.word2freq_comp.keys())))
+        self.vocab_ref = set(self.word2freq_ref.keys())
+        self.vocab_comp = set(self.word2freq_comp.keys())
 
         # TODO: add functions that allow you to easily update the word2freq
         #       dictionaries. What input should be accepted for that?
@@ -58,6 +67,9 @@ class divergence_shift(word_shift):
     def __init__(self, ref_text, comp_text, filenames=False, divergence='jsd',
                  alpha=1.5):
         """
+        Word shift object for calculating the information-theoretic divergence
+        between two texts.
+
         ref_text: str or dict, if str and filenames=False, then the text is read
                 in directliy and split on white space. If str and filenames=True,
                 then text is read in line by line from the designated file and
@@ -66,27 +78,191 @@ class divergence_shift(word_shift):
                 divergence='jsd', ref_text and comp_text are interchangeable
         comp_text: str or dict, of the same type as ref_text. If divergence='jsd'
                    ref_text and comp_text are interchangeable
-        filenames: bool, True if ref_text and comp_text are
-                   filenames of files with text to parse
+        filenames: bool, True if ref_text and comp_text are filenames of files
+                   with text to parse
         divergence: str, type of divergence to calculate. Options: 'jsd','kld'
         alpha: float, (0,2], order of generalized divergence
         """
         word_shift.__init__(self, ref_text, comp_text, filenames)
         self.divergence = divergence
 
-class sentiment_shift(word_shift):
-    def __init__(self, ref, comp_text, filenames=False, dictionary='labMT_english',
+class score_shift(word_shift):
+    def __init__(self, ref_text, comp_text, filenames=False, dictionary_ref=None,
+                 dictionary_comp=None, stop_radius=1.0, middle_score=5.0):
+    """
+    Word shift object for calculating weighted scores of two texts based on a
+    dictionary of word scores, or one dictionary for each text
+
+    ref_text: str or dict, if str and filenames=False, then the text is read
+              in directliy and split on white space. If str and
+              filenames=True, then text is read in line by line from the
+              designated file and split on white space. If dict, then should
+              be of the form where keys are words and values are frequencies
+              of those words
+    comp_text: str or dict, of the same type as reference_text. Word shift
+               scores will be in terms of how the comparison text differs
+               from the reference text
+    filenames: bool, True if reference_text and comparison_text are
+               filenames of files with text to parse
+    dictionary: str, name of dictionary to load, or file path of dictionary
+                to load. Options: 'labMT_english',
+    stop_radius: float, words that have sentiment within stop_radius of the
+                 middle sentiment score will be excluded.
+                 Stop window = middle_score +- stop_radius
+    middle_score: float, middle, neutral score of sentiment (not average)
+                  denoting the center of the stop window
+    """
+    word_shift.__init__(reference_text, comparison_text, filenames)
+    # Load score dictionaries. If only one dictionary is loaded, set word2score
+    # as a separate convenience variable. Keep word2score_ref and word2score_comp
+    # so that we only need to write one score shift function.
+    self.stop_radius = stop_radius
+    self.middle_score = middle_score
+    if dictionary_ref is not None and dictionary_comp is not None:
+        if dictionary_ref == dictionary_comp:
+            self.one_score_dict = True
+        else:
+            self.one_score_dict = False
+        self.word2score_ref = get_score_dictionary(dictionary_ref,stop_radius,
+                                                   middle_score)
+        self.word2score_comp = get_score_dictionary(dictionary_comp,stop_radius,
+                                                    middle_score)
+    elif dictionary_ref is not None:
+        self.one_score_dict = True
+        self.word2score = get_score_dictionary(dictionary_ref, stop_radius,
+                                               middle_score)
+        self.word2score_ref = self.word2score
+        self.word2score_comp = self.word2score
+    else:
+        self.one_score_dict = True
+        self.word2score = get_score_dictionary(dictionary_comp, stop_radius,
+                                               middle_score)
+        self.word2score_ref = self.word2score
+        self.word2score_comp = self.word2score
+    # Set vocabulary from loaded words: (ref \cup comp) \cap sent_words
+    self.vocab_ref = self.vocab_ref.intersection(set(self.word2score_ref))
+    self.vocab_comp = self.vocab_comp.intersection(set(self.word2score_comp))
+    self.vocab = self.vocab_ref.union(self.vocab_comp)
+    if len(vocab) == 0:
+        warning = 'No words in input texts are in score dictionary'
+        warnings.warn(warning, Warning)
+
+    def get_weighted_score(self, text='reference'):
+        """
+        Calculate the average sentiment of the reference or comparison text
+
+        INPUT
+        -----
+        text: str, whether to calculate average for 'comparison' or 'reference'
+
+        OUTPUT
+        ------
+        s_avg: float, average weighted score of comparison or reference
+        """
+        # Check input
+        if text == 'reference':
+            word2freq = self.word2freq_ref
+            word2score = self.word2score_ref
+            vocab = self.vocab_ref
+        elif text == 'comparison':
+            word2freq = self.word2freq_comp
+            word2score = self.word2score_comp
+            vocab = self.word2score_comp
+        else:
+            warning = "'text' parameter input not understood"
+            warnings.warn(warning, Warning)
+            return
+        # Check we have a vocabulary to work with
+        if len(self.vocab) == 0:
+            warning = 'No words in input text are in score dictionary'
+            warnings.warn(warning, Warning)
+            return
+        # Get weighted score and total frequency
+        f_total = sum([freq for word,freq in word2freq.items() if word in vocab])
+        s_weighted = sum([word2score[word]*freq for word,freq in word2freq.items()
+                          if word in vocab])
+        s_avg = s_weighted / f_total
+        return s_avg
+
+    def get_word_shift_scores(self, normalize=True, details=False):
+        """
+        Calculates the word shift scores for each word between the reference and
+        comparison texts
+
+        INPUT
+        -----
+        details: bool, if True returns each component of the shift score and
+                 the final normalized shift score. If false, only returns the
+                 normalized word shift scores
+        normalize: bool, if True normalizes word shift scores so they sum to 1
+
+        OUTPUT
+        ------
+        word2p_diff: dict, if details is True, returns dict where words are keys
+                     and values are the difference in relatively frequency
+                     between the comparison text and frequency text
+        word2s_diff: dict, if details is True, returns dict where words are keys
+                     and values are the relative differences of each word's
+                     sentiment from the reference text's average sentiment
+        word2shift_Score: dict, words are keys and values are shift scores,
+                          p_diff*s_diff, normalized to be between 0 and 1
+        """
+        # Get total frequencies, and average sentiment of reference
+        total_freq_ref = sum([freq for word,freq in self.word2freq_ref.items()
+                              if word in self.vocab])
+        total_freq_comp = sum([freq for word,freq in self.word2freq_comp.items()
+                               if word in self.vocab])
+        average_sentiment_ref = get_weighted_score(self.word2freq_ref,
+                                                   self.word2sentiment)
+        # Get relative frequency of words in reference and comparison
+        word2p_ref = {word:word2freq_ref[word]/total_freq_ref if word
+                      in self.word2freq_ref else 0 for word in self.vocab}
+        word2p_comp = {word:word2freq_comp[word]/total_freq_comp if word
+                       in self.word2freq_comp else 0 for word in self.vocab}
+        # Calculate relative diffs of freq and sentiment, and total shift scores
+        word2p_diff = {word:word2p_comp[word]-word2p_ref[word] for word in self.vocab}
+        word2s_diff = {}
+        for word in vocab:
+            if word in self.vocab_ref and self.vocab_comp:
+                word2s_diff[word] = self.word2score_comp[word]-self.word2score_ref[word]
+            elif word in self.vocab_ref:
+                
+
+
+        word2s_diff = {word:word2sent[word]-average_sentiment_ref for word in self.vocab}
+        word2shift_score = {word:word2s_diff[word]*word2p_diff[word] for word in self.vocab}
+        # Normalize the total shift scores
+        if normalize:
+            total_diff = abs(sum(word2shift_score.values()))
+            word2shift_score = {word:shift_score/total_diff for word,shift_score
+                                in word2shift_score.items()}
+        # Set results in sentiment shift object
+        self.word2p_diff = word2p_diff
+        self.word2s_diff = word2s_diff
+        self.word2shift_score = word2shift_score
+        # Return shift scores
+        if details:
+            return word2p_diff,word2s_diff,word2shift_score
+        else:
+            return word2shift_score
+
+class sentiment_shift(score_shift):
+    def __init__(self, ref_text, comp_text, filenames=False,
+                 dictionary_ref='labMT_english', dictionary_comp = None,
                  stop_radius=1.0, middle_score=5.0):
         """
-        reference_text: str or dict, if str and filenames=False, then the text
-                        is read in directliy and split on white space. If str
-                        and filenames=True, then text is read in line by line
-                        from the designated file and split on white space. If
-                        dict, then should be of the form where keys are words
-                        and values are frequencies of those words
-        comparision_text: str or dict, of the same type as reference_text. Word
-                          shift scores will be in terms of how the comparison
-                          text differs from the reference text
+        Word shift object for calculating weighted scores of texts based on a
+        sentiment dictionary
+
+        ref_text: str or dict, if str and filenames=False, then the text is read
+                  in directliy and split on white space. If str and
+                  filenames=True, then text is read in line by line from the
+                  designated file and split on white space. If dict, then should
+                  be of the form where keys are words and values are frequencies
+                  of those words
+        comp_text: str or dict, of the same type as reference_text. Word shift
+                   scores will be in terms of how the comparison text differs
+                   from the reference text
         filenames: bool, True if reference_text and comparison_text are
                    filenames of files with text to parse
         dictionary: str, name of dictionary to load, or file path of dictionary
@@ -97,25 +273,18 @@ class sentiment_shift(word_shift):
         middle_score: float, middle, neutral score of sentiment (not average)
                       denoting the center of the stop window
         """
-        # Note, in word_shift object reference_text is ref_text, comparison_text
-        # is comp_text
-        word_shift.__init__(reference_text, comparison_text, filenames)
-        # Load sentiment dictionary
-        self.stop_radius = stop_radius
-        self.middle_score = middle_score
-        self.word2sentiment = get_score_dictionary(dictionary, stop_radius,
-                                                   middle_score)
-        # Set vocabulary from loaded words: (ref \cup comp) \cap sent_words
-        self.vocab = self.vocab.intersection(set(self.word2sentiment.keys()))
-        if len(vocab) == 0:
-            warning = 'No words in input texts are in score dictionary'
-            warnings.warn(warning, Warning)
+        score_shift.__init__(self, ref_text, comp_text, filenames=False,
+                             dictionary_ref=dictionary_ref, stop_radius=1.0
+                             dictionary_comp=dictionary_comp, middle_score=5.0)
+        # Set sentiment shift specific attributes for convenience
+        self.word2sentiment = self.word2score
         # Initialize word shift score components to None
         self.word2p_diff = None
         self.word2s_diff = None
+        self.word2s_rel_diff = None
         self.word2shift_score = None
 
-    def get_average_sentiment(self, text='reference'):
+    def get_weighted_sentiment(self, text='reference'):
         """
         Calculate the average sentiment of the comparison or reference text
 
@@ -127,22 +296,7 @@ class sentiment_shift(word_shift):
         ------
         average_sentiment: float, average sentiment of comparison or reference
         """
-        # Throw warning if word2freq dicts haven't been initialized
-        if (text=='reference' and self.word2freq_ref) is None\
-            or (text=='comparison' and self.word2freq_comp is None):
-            warning = 'Text has not been specified in word shift object. Please'\
-                      +'initialize object.'
-                warnings.warn(warning, Warn)
-                return
-        # Get average sentiment
-        if text == 'reference':
-            return self.get_weighted_score(self.word2freq_ref,self.word2sentiment)
-        elif text == 'comparison':
-            return self.get_weighted_score(self.word2freq_comp,self.word2sentiment)
-        else:
-            warning = "Please specify either text='reference' or 'comparison'."
-            warnings.warn(warning, Warning)
-            return
+        self.get_weighted_score(self, text=text)
 
     def get_word_shift_scores(self, normalize=True, details=False):
         """
@@ -185,7 +339,7 @@ class sentiment_shift(word_shift):
         word2shift_score = {word:word2s_diff[word]*word2p_diff[word] for word in self.vocab}
         # Normalize the total shift scores
         if normalize:
-            total_diff = np.abs(sum(word2shift_score.values()))
+            total_diff = abs(sum(word2shift_score.values()))
             word2shift_score = {word:shift_score/total_diff for word,shift_score
                                 in word2shift_score.items()}
         # Set results in sentiment shift object
@@ -198,6 +352,7 @@ class sentiment_shift(word_shift):
         else:
             return word2shift_score
 
+    # TODO: split into simple_word_shift and word_shift based on if one_score_dict
     def get_word_shift(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
                        bar_word_space=0.5, width_scaling=1.4, show_plot=True
                        tight=True, xlabel=None, ylabel=None, title=None,
@@ -226,24 +381,25 @@ class sentiment_shift(word_shift):
         # Sort word scores and take top_n. Reverse for plotting
         word_scores = [(word, self.word2s_diff[word], self.word2p_diff[word],
                         self.word2shift_score[word])]
-        word_scores = sorted(word_scores, key=labmda x:np.abs(x[3]))[:top_n]
+        # reverse?
+        word_scores = sorted(word_scores, key=labmda x:abs(x[3]))[:top_n]
         word_diffs = [100*score for (word,s_diff,p_diff,score) in word_scores]
         # Get bar colors
         bar_colors = [bar_colors[0] if s_diff>0 else bar_colors[1]\
                       for (word,s_diff,p_diff,score) in word_scores]
-        # Plot scores, height:width=2.5:1
+        # Plot scores, height:width ratio = 2.5:1
         f,ax = plt.subplots(figsize=(6,15))
         ax.margins(y=0.01)
         # Plot the skeleton of the word shift
         # edgecolor thing is a workaround for a bug in matplotlib
         bars = ax.barh(range(1,len(word_scores)+1), word_diffs, .8, linewidth=1
                        align='center', color=bar_colors, edgecolor=['black']*top_n)
-        # Add center line dividing line
+        # Add center dividing line
         ax.plot([0,0],[1,top_n], '-', color='black', linewidth=0.7)
         # Make sure there's the same amount of space on either side of y-axis,
         # and add space for word labels using 'width_scaling' (can we automate?)
         x_min,x_max = ax.get_xlim()
-        x_sym = width_scaling*max([np.abs(x_min),np.abs(x_max)])
+        x_sym = width_scaling*max([abs(x_min),abs(x_max)])
         ax.set_xlim((-1*x_sym, x_sym))
         # Flip y-axis tick labels and make sure every 5th tick is labeled
         y_ticks = list(range(1,top_n,5))+[top_n]
@@ -273,26 +429,6 @@ class sentiment_shift(word_shift):
         if show_plot:
             plt.show()
         return ax
-
-def get_weighted_score(word2freq, word2score):
-    """
-    Should make more flexible so it's easier to use
-
-    Let user enter text like they would for word shift object
-    Let user pick dictionary here
-    """
-    # Get vocabulary of words that are in our text and in our dictionary
-    vocab = set(word2freq.keys()).intersection(set(word2score.keys()))
-    if len(vocab) == 0:
-        warning = 'No words in input text are in score dictionary'
-        warnings.warn(warning, Warning)
-        return
-    # Get weighted score and total frequency
-    f_total = sum([freq for word,freq in word2freq.items() if word in vocab])
-    s_weighted = sum([word2score[word]*freq for word,freq in word2freq.items()
-                      if word in vocab])
-    s_avg = s_weighted / f_total
-    return s_avg
 
 def get_score_dictionary(dictionary, stop_radius=0.0, middle_score=5.0,
                          delimiter=','):
