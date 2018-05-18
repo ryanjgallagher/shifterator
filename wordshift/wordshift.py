@@ -226,7 +226,9 @@ class score_shift(word_shift):
             if word in self.vocab_ref and self.vocab_comp:
                 word2s_diff[word] = self.word2score_comp[word]-self.word2score_ref[word]
             elif word in self.vocab_ref:
-                
+                # TODO: do vocab_ref and vocab_comp have to be the same for this
+                # to be well defined? Have to clean up if this is the case. Mostly
+                # need to reduce everything down to one self.vocab attribute
 
 
         word2s_diff = {word:word2sent[word]-average_sentiment_ref for word in self.vocab}
