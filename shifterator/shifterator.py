@@ -1,9 +1,17 @@
 """
-wordshift.py
+shifterator.py
 
 Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-Last updated: June 12th, 2018
+Last updated: June 13th, 2018
+
+TODO:
+- Define funcs to plot insets to shift graph
+- Define advanced shift graph func / decide what goes in an advanced shift
+- Add funcs to shift class that allow for easy updating of type2freq dicts
+- Clean up class docstrings to fit standards of where things should be described
+  (whether it's in init or under class, and listing what funcs are available)
 """
+
 import os
 import sys
 import warnings
@@ -11,109 +19,103 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
 
+# ------------------------------------------------------------------------------
+# ---------------------------- GENERAL SHIFT CLASS -----------------------------
+# ------------------------------------------------------------------------------
 class shift:
-    def __init__(self, sys_1, sys_2, ref, filenames=False, type_dict_1=None,
-                 type_dict_2=None, stop_radius=0.0, middle_score=None,
-                 delimiter=','):
-    """
-    Shift object for calculating weighted scores of two systems of types, and
-    the relative shift between them
+    def __init__(self, system_1, system_2, reference_value=None,
+                 filenames=False, type2score_1=None, type2score_2=None,
+                 stop_lens=None, delimiter=','):
+        """
+        Shift object for calculating weighted scores of two systems of types,
+        and the shift between them
 
-    sys1: str or dict, if str and filenames=False, then the input is assumed
-          to be text and it is read in directliy and split on white space. If
-          str and filenames=True, then text is read in line by line from the
-          designated file and split on white space. If dict, then should
-          be of the form where keys are types and values are frequencies of
-          those types
-    sys2: str or dict, of the same type as sys1.
-    ref: str or dict, of the same type as sys1 and sys2. Shift scores will be in
-          terms of how the systems 1 and 2 deviate from the reference system.
-    filenames: bool, True if sys_1 and sys_2 are filenames of files with text to
-                parse
-    type_dict_1: str or dict, If dict, types are keys and values are "scores"
-                 associated with each type (e.g., sentiment). If str, either the
-                 name of a score dict or file path to a score dict, where types
-                 and scores are given on each line, separated by commas. If
-                 None and type_dict_2 is None, defaults to uniform scores across
-                 types. Otherwise defaults to type_dict_2 scores. Similarly, for
-                 type_dict_2
-    type_dict_ref: str or dict, If dict, types are keys and values are "scores"
-                   associated with each type (e.g., sentiment). If str, either
-                   the name of a score dict or file path to a score dict, where
-                   types and scores are given on each line, separated by commas.
-                   If None, defaults to uniform scores across
-    stop_radius: float, types that have scores within stop_radius of the middle
-                 score will be excluded
-                 Stop window = middle_score +- stop_radius
-    middle_score: float, middle, "neutral" (not average) score denoting the
-                  center of the stop window
-    delimiter: str, delimiter separating types from scores if loading from file
-    """
-    # Load type2freq dictionaries
-    if isinstance(ref, dict) and isinstance(comp, dict):
-        self.type2freq_1 = sys_1
-        self.type2freq_2 = sys_2
-    elif isinstance(ref, basestring) and isinstance(comp, basestring):
-        if filenames is True:
-            self.type2freq_1 = get_freqs_from_file(sys_1)
-            self.type2freq_2 = get_freqs_from_file(sys_2)
-        elif filename is False:
-            self.type2freq_1 = dict(Counter(sys_1.split()))
-            self.type2freq_2 = dict(Counter(sys_2.split()))
-    else:
-        warning = 'Shift object was not given text, a file to parse, or '+\
-                  'frequency dictionaries. Check input.'
-        warnings.warn(warning, Warning)
-        self.type2freq_1 = dict()
-        self.type2freq_2 = dict()
-    # Set observed types
-    # TODO: maybe get rid of these and just calculate in funcs
-    self.types = (set(self.type2freq_1.keys()).union(set(self.typefreq_2.keys())))
-    self.types_1 = set(self.type2freq_1.keys())
-    self.types_2 = set(self.type2freq_2.keys())
-    # Load type2score dictionaries
-    self.stop_radius = stop_radius
-    self.middle_score = middle_score
-    if type_dict_1 is not None and type_dict_2 is not None:
-        self.type2score_1 = get_score_dictionary(type_dict_1, stop_radius,
-                                                 middle_score, delimiter)
-        self.type2score_2 = get_score_dictionary(type_dict_2, stop_radius,
-                                                 middle_score, delimiter)
-    elif type_dict_1 is not None:
-        self.type2score_1 = get_score_dictionary(type_dict_1, stop_radius,
-                                                 middle_score, delimiter)
-        self.type2score_2 = self.word2score_1
-    elif type_dict_2 is not None:
-        self.type2score_2 = get_score_dictionary(type_dict_2, stop_radius,
-                                                 middle_score, delimiter)
-        self.type2score_1 = self.word2score_2
-    else:
-        self.type2score_1 = {t : 1 for t in self.types_1}
-        self.type2score_2 = {t : 1 for t in self.types_2}
-    # Update types according to score types: (sys1 \cup sys2) \cap score_words
-    # TODO: maybe get rid of these and just calculate in funcs
-    self.types_1 = self.types_1.intersection(set(self.type2score_1))
-    self.types_2 = self.types_2.intersection(set(self.type2score_2))
-    self.types = self.types_1.union(self.types_2)
-    if len(vocab) == 0:
-        warning = 'No words in input texts are in score dictionary'
-        warnings.warn(warning, Warning)
+        Parameters
+        ----------
+        system_1, system_2: dict or str
+            if dict, then keys are types of a system and values are frequencies
+            of those types. if str and filenames=False, then the types are
+            assumed to be tokens separated by white space. If str and
+            filenames=True, then types are assumed to be tokens and text is read
+            in line by line from the designated file and split on white space
+        reference_value: float, optional
+            the reference score from which to calculate the deviation. If None,
+            defaults to the weighted score of system_1
+        filenames: bool, optional
+            True if system_1 and system_2 are filenames of files with text to
+            parse
+        type2score_1, type2score_2: dict or str, optional
+            if dict, types are keys and values are "scores" associated with each
+            type (e.g., sentiment). If str, either the name of a score dict or
+            file path to a score dict, where types and scores are given on each
+            line, separated by commas. If None and other type2score is None,
+            defaults to uniform scores across types. Otherwise defaults to the
+            other type2score dict
+        stop_lens: iterable of 2-tuples, optional
+            denotes intervals that should be excluded when calculating shift
+            scores
+        """
+        # Load type2freq dictionaries
+        if isinstance(system_1, dict) and isinstance(system_2, dict):
+            self.type2freq_1 = system_1
+            self.type2freq_2 = system_2
+        elif isinstance(ref, basestring) and isinstance(comp, basestring):
+            if filenames is True:
+                self.type2freq_1 = get_freqs_from_file(system_1)
+                self.type2freq_2 = get_freqs_from_file(system_2)
+            elif filename is False:
+                self.type2freq_1 = dict(Counter(system_1.split()))
+                self.type2freq_2 = dict(Counter(system_2.split()))
+        else:
+            warning = 'Shift object was not given text, a file to parse, or '+\
+                      'frequency dictionaries. Check input.'
+            warnings.warn(warning, Warning)
+            self.type2freq_1 = dict()
+            self.type2freq_2 = dict()
+        # Load type2score dictionaries
+        self.stop_lens = stop_lens
+        if type_dict_1 is not None and type_dict_2 is not None:
+            self.type2score_1 = get_score_dictionary(type2score_1, stop_lens,
+                                                     delimiter)
+            self.type2score_2 = get_score_dictionary(type2score_2, stop_lens,
+                                                     delimiter)
+        elif type_dict_1 is not None:
+            self.type2score_1 = get_score_dictionary(type2score_1, stop_lens,
+                                                     delimiter)
+            self.type2score_2 = self.word2score_1
+        elif type_dict_2 is not None:
+            self.type2score_2 = get_score_dictionary(type2score_2, stop_lens,
+                                                     delimiter)
+            self.type2score_1 = self.word2score_2
+        else:
+            self.type2score_1 = {t : 1 for t in self.type2freq_1}
+            self.type2score_2 = {t : 1 for t in self.type2freq_2}
+        # Set reference value
+        if reference_value is not None:
+            self.reference_value = reference_value
+        else:
+            self.reference_value = self.get_weighted_score(self.type2freq_1,
+                                                           self.type2score_1)
 
-    # TODO: add functions that allow you to easily update the type2freq dicts
+        # TODO: add functions that allow you to easily update the type2freq dicts
+
 
     def get_weighted_score(self, type2freq, type2score):
         """
         Calculate the average score of the system specified by the frequencies
         and scores of the types in that system
 
-        INPUT
-        -----
-        type2freq: dict, keys are types and values are frequencies
-        type2score: dict, keys are types and values are scores
+        Parameters
+        ----------
+        type2freq: dict
+            keys are types and values are frequencies
+        type2score: dict
+            keys are types and values are scores
 
-        OUTPUT
-        ------
-        s_avg: float, avg. weighted score of sys according to freqs and scores
+        Returns
+        -------
+        s_avg: float
+            Average weighted score of system
         """
         # Check we have a vocabulary to work with
         types = set(type2freq.keys()).intersection(set(type2score.keys()))
@@ -129,47 +131,63 @@ class shift:
         return s_avg
 
     def get_shift_scores(self, type2freq_1=None, type2score_1=None,
-                         type2freq_2=None, type2score_2=None, type2freq_ref=None,
-                         type2score_ref=None, normalize=True, details=False):
+                         type2freq_2=None, type2score_2=None,
+                         reference_value=None, normalize=True, details=False):
         """
         Calculates the type shift scores between two systems
 
-        INPUT
-        -----
-        type2freq: dict, keys are types and values are frequencies. If None,
-                   defaults to the sys_1 and sys_2 type freqs respectively
-        type2score: dict, keys are types and values are scores. If None,
-                    defaults to the sys_1 and sys_2 type scores respectively
-        normalize: bool, if True normalizes shift scores so they sum to 1
+        Parameters
+        ----------
+        type2freq: dict
+            keys are types and values are frequencies. If None, defaults to the
+            system_1 and system_2 type2freq dicts respectively
+        type2score: dict
+            keys are types and values are scores. If None, defaults to the
+            system_1 and system_2 type2score dicts respectively
+        reference_value: float
+            the reference score from which to calculate the deviation. If None,
+            defaults to the weighted score given by type2freq_1 and type2score_1
+        normalize: bool
+            if True normalizes shift scores so they sum to 1
         details: bool, if True returns each component of the shift score and
                  the final normalized shift score. If false, only returns the
                  normalized shift scores
 
-        OUTPUT
-        ------
-        type2p_diff: dict, if details is True, returns dict where words are keys
-                     and values are the difference in relatively frequency
-                     between the comparison text and frequency text
-        type2s_diff: dict, if details is True, returns dict where words are keys
-                     and values are the relative differences of each word's
-                     sentiment from the reference text's average sentiment
-        type2shift_Score: dict, words are keys and values are shift scores,
-                          p_diff*s_diff, normalized to be between 0 and 1
+        Returns
+        -------
+        type2p_diff: dict
+            if details is True, returns dict where keys are types and values are
+            the difference in relatively frequency, i.e. p_i,2 - p_i,1 for type i
+        type2s_diff: dict,
+            if details is True, returns dict where keys are types and values are
+            the relative differences in score, i.e. s_i,2 - s_i,1 for type i
+        type2s_ref_diff: dict
+            if details is True, returns dict where keys are types and values are
+            relative deviation from reference score, i.e. 0.5*(s_i,2+s_i,1)-s_ref
+            for type i
+        type2shift_score: dict
+            words are keys and values are shift scores
         """
-        # Check input
+        # Check input of type2freq and type2score dicts
         if type2freq_1 is None or type2score_1 is None:
             type2freq_1 = self.type2freq_1
             type2score_1 = self.type2score_1
         if type2freq_2 is None or type2score_2 is None:
             type2freq_2 = self.type2freq_2
             type2score_2 = self.type2score_2
-        if type2freq_ref is None or type2score_ref is None:
-            type2freq_ref = self.type2freq_ref
-            type2freq_score = self.type2freq_self
+        # Enforce common score vocabulary
+        if set(type2score_1.keys()).difference(type2score_2.keys()) != 0:
+            warning = 'Score dictionaries do not have a common vocabulary. '\
+                      +'Shift is not well-defined.'
+            warnings.warn(warning, Warning)
+            return
         # Get observed types that are also in score dicts
         types_1 = set(type2freq_1.keys()).intersection(set(type2score_1.keys()))
         types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
         types = types_1.union(types_2)
+        # Check input of reference value
+        if reference_value is None:
+            reference_value = self.get_weighted_score(type2freq_1, type2score_1)
         # Get total frequencies, and average score of reference
         total_freq_1 = sum([freq for t,freq in type2freq_1.items() if t in types])
         total_freq_2 = sum([freq for t,freq in type2freq_2.items() if t in types])
@@ -181,27 +199,22 @@ class shift:
                     for t in types}
         # Calculate relative diffs in freq
         type2p_diff = {t:type2p_2[t]-type2p_1[t] for t in types}
-        # Calculate relative diffs in score and relative diff from ref, where defined
-        # TODO: this needs to be handled more elegantly
+        # Calculate relative diffs in score and relative diff from ref
         type2s_diff = {}
         type2s_ref_diff = {}
         for t in types:
-            if t in types_1 and types_2:
-                type2s_diff[t] = type2score_2[t]-type2score_1[t]
-                type2s_ref_diff[t] = 0.5*(type2score_2[t]+type2score_1[t])-s_avg_ref
-            else:
-                type2s_diff[t] = None
-                type2s_ref_diff[t] = None
+            type2s_diff[t] = type2score_2[t]-type2score_1[t]
+            type2s_ref_diff[t] = 0.5*(type2score_2[t]+type2score_1[t])-s_avg_ref
         # Calculate total shift scores
-        type2shift_score = {t : type2p_diff[t]*type2s_ref_diff[t]+0.5*type2s_diff[t]\
-                            *(type2p_2[t]+type2p_1[t]) for t in types
-                            if t in types_1 and types_2}
+        type2shift_score = {t : type2p_diff[t]*type2s_ref_diff[t]\
+                                +0.5*type2s_diff[t]*(type2p_2[t]+type2p_1[t])
+                                for t in types if t in types}
         # Normalize the total shift scores
         if normalize:
             total_diff = abs(sum(type2shift_score.values()))
             type2shift_score = {t : shift_score/total_diff for t,shift_score
                                 in type2shift_score.items()}
-        # Set results in sentiment shift object
+        # Set results in shift object
         self.type2p_diff = type2p_diff
         self.type2s_diff = type2s_diff
         self.type2s_ref_diff = type2s_ref_diff
@@ -213,68 +226,97 @@ class shift:
             return type2shift_score
 
     def get_shift_graph(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
-                        bar_type_space=0.5, width_scaling=1.4, xlabel=None,
-                        ylabel=None, title=None, xlabel_fontsize=18,
-                        ylabel_fontsize=18, title_fontsize=14, detailed=False,
-                        show_plot=True, tight=True):
+                        bar_type_space=0.5, width_scaling=1.4, insets=True,
+                        advanced=False, xlabel=None, ylabel=None, title=None,
+                        xlabel_fontsize=18, ylabel_fontsize=18,
+                        title_fontsize=14, show_plot=True, tight=True):
+        # TODO: can the later arguments be passed as args straight to plotting?
         """
         Plot the shift graph between two systems of types
 
-        INPUT
-        -----
-        top_n: int, display the top_n types as sorted by their absolute
-               contribution to the difference between systems
-        bar_colors: tuple, colors to use for bars where first and second entries
-                    are the colors for types that have positive and negative
-                    relative score differences relatively
-        bar_type_space: float, space between the end of each bar and the
-                        corresponding label
-        width_scaling: float, parameter controls the width of the x-axis. If
-                       types overlap with the y-axis then increase the scaling
-        detailed: bool, whether to return detailed (advanced) shift graph
-        show_plot: bool, whether to show plot on finish
-        tight: bool, whether to call plt.tight_layout() on the plot
+        Parameters
+        ----------
+        top_n: int
+            display the top_n types as sorted by their absolute contribution to
+            the difference between systems
+        bar_colors: 4-tuple
+            colors to use for bars where first and second entries are the colors
+            for types that have positive and negative relative score differences
+            relatively
+        bar_type_space: float
+            space between the end of each bar and the corresponding label
+        width_scaling: float
+            parameter that controls the width of the x-axis. If types overlap
+            with the y-axis then increase the scaling
+        insets: bool
+            whether to show insets showing the cumulative contribution to the
+            shift by ranked words, and the relative sizes of each system
+        advanced: bool
+            whether to return an advanced shift figure
+        show_plot: bool
+            whether to show plot on finish
+        tight: bool
+            whether to call plt.tight_layout() on the plot
+
+        Returns
+        -------
+        ax
+            matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
-        if not detailed:
+        if not advanced:
             return self.get_shift_graph_simple(top_n, bar_colors, bar_type_space,
-                                               width_scaling, xlabel, ylabel,
-                                               title, xlabel_fontsize,
+                                               width_scaling, insets, xlabel,
+                                               ylabel, title, xlabel_fontsize,
                                                ylabel_fontsize, title_fontsize,
                                                show_plot, tight)
         else:
-            return self.get_shift_graph_detailed(top_n, bar_colors,
+            return self.get_shift_graph_advanced(top_n, bar_colors,
                                                  bar_type_space, width_scaling,
-                                                 xlabel, ylabel, title,
+                                                 insets, xlabel, ylabel, title,
                                                  xlabel_fontsize, ylabel_fontsize,
                                                  title_fontsize, show_plot, tight)
 
     def get_shift_graph_simple(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
                                bar_type_space=0.5, width_scaling=1.4,
-                               xlabel=None, ylabel=None, title=None,
+                               insets=True, xlabel=None, ylabel=None, title=None,
                                xlabel_fontsize=18, ylabel_fontsize=18,
                                title_fontsize=14, show_plot=True, tight=True):
+        # TODO: can the later arguments be passed as args straight to plotting?
         """
         Plot the simple shift graph between two systems of types
 
-        INPUT
-        -----
-        top_n: int, display the top_n types as sorted by their absolute
-               contribution to the difference between systems
-        bar_colors: tuple, colors to use for bars where first and second entries
-                    are the colors for types that have positive and negative
-                    relative score differences relatively
-        bar_type_space: float, space between the end of each bar and the
-                        corresponding label
-        width_scaling: float, parameter controls the width of the x-axis. If
-                       types overlap with the y-axis then increase the scaling
-        show_plot: bool, whether to show plot on finish
-        tight: bool, whether to call plt.tight_layout() on the plot
+        Parameters
+        ----------
+        top_n: int
+            display the top_n types as sorted by their absolute contribution to
+            the difference between systems
+        bar_colors: 4-tuple
+            colors to use for bars where first and second entries are the colors
+            for types that have positive and negative relative score differences
+            relatively
+        bar_type_space: float
+            space between the end of each bar and the corresponding label
+        width_scaling: float
+            parameter that controls the width of the x-axis. If types overlap
+            with the y-axis then increase the scaling
+        insets: bool
+            whether to show insets showing the cumulative contribution to the
+            shift by ranked words, and the relative sizes of each system
+        show_plot: bool
+            whether to show plot on finish
+        tight: bool
+            whether to call plt.tight_layout() on the plot
+
+        Returns
+        -------
+        ax
+            matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
         if self.type2shift_score is None:
             self.get_shift_scores(details=False)
         # Sort type scores and take top_n. Reverse for plotting
         type_scores = [(t, self.type2s_diff[t], self.type2p_diff[t],
-                        self.type2shift_score[t]) for t in self.types]
+                        self.type2shift_score[t]) for t in self.type2s_diff]
         # reverse?
         type_scores = sorted(type_scores, key=labmda x:abs(x[3]))[:top_n]
         type_diffs = [100*score for (t,s_diff,p_diff,score) in type_scores]
@@ -315,8 +357,10 @@ class shift:
         if title is None:
             s_avg_1 = self.get_average_sentiment(self.type2freq_1,self.type2score_1)
             s_avg_2 = self.get_average_sentiment(self.type2freq_2,self.type2score_2)
-            title = '$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(ref)}=$'+'{0:.2f}'.format(s_avg_ref)+'\n'\
-                    +'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(comp)}=$'+'{0:.2f}'.format(s_avg_comp)
+            title = '$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(ref)}=$'+'{0:.2f}'\
+                    .format(s_avg_ref)+'\n'\
+                    +'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(comp)}=$'+'{0:.2f}'\
+                    .format(s_avg_comp)
         ax.set_title(title_str, fontsize=14)
         # Show and return plot
         if tight:
@@ -325,235 +369,93 @@ class shift:
             plt.show()
         return ax
 
-    def get_shift_graph_detailed(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
+    def get_shift_graph_advanced(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
                                  bar_type_space=0.5, width_scaling=1.4,
                                  xlabel=None, ylabel=None, title=None,
                                  xlabel_fontsize=18, ylabel_fontsize=18,
                                  title_fontsize=14, show_plot=True, tight=True):
         """
-        Plot the detailed shift graph between two systems of types
+        Plot the advanced shift graph between two systems of types
 
-        INPUT
-        -----
-        top_n: int, display the top_n types as sorted by their absolute
-               contribution to the difference between systems
-        bar_colors: tuple, colors to use for bars where first and second entries
-                    are the colors for types that have positive and negative
-                    relative score differences relatively
-        bar_type_space: float, space between the end of each bar and the
-                        corresponding label
-        width_scaling: float, parameter controls the width of the x-axis. If
-                       types overlap with the y-axis then increase the scaling
-        show_plot: bool, whether to show plot on finish
-        tight: bool, whether to call plt.tight_layout() on the plot
+        Parameters
+        ----------
+        top_n: int
+            display the top_n types as sorted by their absolute contribution to
+            the difference between systems
+        bar_colors: 4-tuple
+            colors to use for bars where first and second entries are the colors
+            for types that have positive and negative relative score differences
+            relatively
+        bar_type_space: float
+            space between the end of each bar and the corresponding label
+        width_scaling: float
+            parameter that controls the width of the x-axis. If types overlap
+            with the y-axis then increase the scaling
+        insets: bool
+            whether to show insets showing the cumulative contribution to the
+            shift by ranked words, and the relative sizes of each system
+        show_plot: bool
+            whether to show plot on finish
+        tight: bool
+            whether to call plt.tight_layout() on the plot
+
+        Returns
+        -------
+        ax
+            matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
         # TODO: implement, can probably make a func that's shared between the
         # simple and detailed shift that creates the fundamental layout
         pass
 
-# ------------------------------------------------------------------------------
-__init__(self, sys_1, sys_2, ref, filenames=False, type_dict_1=None,
-             type_dict_2=None, stop_radius=0.0, middle_score=None,
-             delimiter=',')
-
-class relative_shift(shift):
-    def __init__(self, reference, comparison, filenames=False, ref_dict=None,
-                 comp_dict=None, stop_radius=0.0, middle_score=None,
-                 delimiter=','):
-        shift.__init__(reference, comparison, reference, filenames=filenames,
-                       type_dict_1=ref_dict, type_dict_2=comp_dict,
-                       stop_radius=stop_radius, middle_score=middle_score,
-                       delimiter=delimiter)
-
-class sentiment_shift(relative_shift):
-    def __init__(self, reference_text, comparison_text, filenames=False,
-                 ref_sent_dict='labMT_english', comp_sent_dict=None,
-                 stop_radius=1.0, middle_score=None, delimiter=','):
-        relative_shift.__init__(reference_text, comparison_text, filenames=filenames,
-                       ref_dict=ref_sent_dict, comp_dict=comp_sent_dict,
-                       stop_radius=stop_radius, middle_score=middle_score,
-                       delimiter=delimiter)
 
 # ------------------------------------------------------------------------------
-class symmetric_shift(shift):
-    pass
-
-class divergence_shift(shift):
-    pass
-
+# ------------------------------ HELPER FUNCTIONS ------------------------------
 # ------------------------------------------------------------------------------
-
-
-class sentiment_shift(score_shift):
-    def __init__(self, ref_text, comp_text, filenames=False,
-                 dictionary_ref='labMT_english', dictionary_comp = None,
-                 stop_radius=1.0, middle_score=5.0):
-        """
-        Word shift object for calculating weighted scores of texts based on a
-        sentiment dictionary
-
-        ref_text: str or dict, if str and filenames=False, then the text is read
-                  in directliy and split on white space. If str and
-                  filenames=True, then text is read in line by line from the
-                  designated file and split on white space. If dict, then should
-                  be of the form where keys are words and values are frequencies
-                  of those words
-        comp_text: str or dict, of the same type as reference_text. Word shift
-                   scores will be in terms of how the comparison text differs
-                   from the reference text
-        filenames: bool, True if reference_text and comparison_text are
-                   filenames of files with text to parse
-        dictionary: str, name of dictionary to load, or file path of dictionary
-                    to load. Options: 'labMT_english',
-        stop_radius: float, words that have sentiment within stop_radius of the
-                     middle sentiment score will be excluded.
-                     Stop window = middle_score +- stop_radius
-        middle_score: float, middle, neutral score of sentiment (not average)
-                      denoting the center of the stop window
-        """
-        score_shift.__init__(self, ref_text, comp_text, filenames=False,
-                             dictionary_ref=dictionary_ref, stop_radius=1.0
-                             dictionary_comp=dictionary_comp, middle_score=5.0)
-        # Set sentiment shift specific attributes for convenience
-        self.word2sentiment = self.word2score
-        # Initialize word shift score components to None
-        self.word2p_diff = None
-        self.word2s_diff = None
-        self.word2s_rel_diff = None
-        self.word2shift_score = None
-
-    def get_weighted_sentiment(self, text='reference'):
-        """
-        Calculate the average sentiment of the comparison or reference text
-
-        INPUT
-        -----
-        text: str, whether to calculate average for 'comparison' or 'reference'
-
-        OUTPUT
-        ------
-        average_sentiment: float, average sentiment of comparison or reference
-        """
-        self.get_weighted_score(self, text=text)
-
-    def get_word_shift_scores(self, normalize=True, details=False):
-        """
-        Calculates the sentiment word shift scores between a reference and
-        comparison text
-
-        INPUT
-        -----
-        details: bool, if True returns each component of the shift score and
-                 the final normalized shift score. If false, only returns the
-                 normalized word shift scores
-        normalize: bool, if True normalizes word shift scores so they sum to 1
-
-        OUTPUT
-        ------
-        word2p_diff: dict, if details is True, returns dict where words are keys
-                     and values are the difference in relatively frequency
-                     between the comparison text and frequency text
-        word2s_diff: dict, if details is True, returns dict where words are keys
-                     and values are the relative differences of each word's
-                     sentiment from the reference text's average sentiment
-        word2shift_Score: dict, words are keys and values are shift scores,
-                          p_diff*s_diff, normalized to be between 0 and 1
-        """
-        # Get total frequencies, and average sentiment of reference
-        total_freq_ref = sum([freq for word,freq in self.word2freq_ref.items()
-                              if word in self.vocab])
-        total_freq_comp = sum([freq for word,freq in self.word2freq_comp.items()
-                               if word in self.vocab])
-        average_sentiment_ref = get_weighted_score(self.word2freq_ref,
-                                                   self.word2sentiment)
-        # Get relative frequency of words in reference and comparison
-        word2p_ref = {word:word2freq_ref[word]/total_freq_ref if word
-                      in self.word2freq_ref else 0 for word in self.vocab}
-        word2p_comp = {word:word2freq_comp[word]/total_freq_comp if word
-                       in self.word2freq_comp else 0 for word in self.vocab}
-        # Calculate relative diffs of freq and sentiment, and total shift scores
-        word2p_diff = {word:word2p_comp[word]-word2p_ref[word] for word in self.vocab}
-        word2s_diff = {word:word2sent[word]-average_sentiment_ref for word in self.vocab}
-        word2shift_score = {word:word2s_diff[word]*word2p_diff[word] for word in self.vocab}
-        # Normalize the total shift scores
-        if normalize:
-            total_diff = abs(sum(word2shift_score.values()))
-            word2shift_score = {word:shift_score/total_diff for word,shift_score
-                                in word2shift_score.items()}
-        # Set results in sentiment shift object
-        self.word2p_diff = word2p_diff
-        self.word2s_diff = word2s_diff
-        self.word2shift_score = word2shift_score
-        # Return shift scores
-        if details:
-            return word2p_diff,word2s_diff,word2shift_score
-        else:
-            return word2shift_score
-
-class divergence_shift(word_shift):
-    def __init__(self, ref_text, comp_text, filenames=False, divergence='jsd',
-                 alpha=1.5):
-        """
-        Word shift object for calculating the information-theoretic divergence
-        between two texts.
-
-        ref_text: str or dict, if str and filenames=False, then the text is read
-                in directliy and split on white space. If str and filenames=True,
-                then text is read in line by line from the designated file and
-                split on white space. If dict, then should be of the form where
-                keys are words and values are frequencies of those words. If
-                divergence='jsd', ref_text and comp_text are interchangeable
-        comp_text: str or dict, of the same type as ref_text. If divergence='jsd'
-                   ref_text and comp_text are interchangeable
-        filenames: bool, True if ref_text and comp_text are filenames of files
-                   with text to parse
-        divergence: str, type of divergence to calculate. Options: 'jsd','kld'
-        alpha: float, (0,2], order of generalized divergence
-        """
-        word_shift.__init__(self, ref_text, comp_text, filenames)
-        self.divergence = divergence
-
-def get_score_dictionary(score_dict, stop_radius=0.0, middle_score=5.0,
-                         delimiter=','):
+def get_score_dictionary(scores, stop_lens=None, delimiter=','):
     """
-    Loads a dictionary of type scores.
+    Loads a dictionary of type scores
 
-    INPUT
-    -----
-    score_dict: dict or str, dict where keys are types and values are scores (in
-                which case the dict is returned automatically), orname of
-                dictionary to load, or file path of dictionary to load.
-                Options: 'labMT_english',
-    delimiter: str, delimiter used in the dictionary file
+    Parameters
+    ----------
+    scores: dict or str
+        if dict, then returns the dict automatically. If str, then it is either
+        the name of a shifterator dictionary to load, or file path of dictionary
+        to load. File should be two columns of types and scores on each line,
+        separated by delimiter
+            Options: 'labMT_english'
+    stop_lens: iteratble of 2-tuples
+        denotes intervals that should be excluded when calculating shift scores
+    delimiter: str
+        delimiter used in the dictionary file
 
-    OUTPUT:
-    ------
+    Returns
+    -------
+    type2score, dict
+        dictionary where keys are types and values are scores of those types
     """
-    if type(score_dict) is dict:
-        return score_dict
-    # Check if CSV of dictionary exists, otherwise use direct file path
-    dicts = os.listdir('data')
-    if  score_dict+'.csv' in dicts:
-        dict_file = 'data/'+score_dict+'.csv'
-    elif score_dict in dicts:
-        dict_file = 'data/'+score_dict
-    else:
-        dict_file = score_dict
+    if type(scores) is dict:
+        return scores
+    # Check if dictionary name is in shifterator data
+    score_dicts = os.listdir('data')
+    if scores in score_dicts:
+        dict_file = 'data/'+scores
+    elif  scores+'.csv' in score_dicts:
+        dict_file = 'data/'+scores+'.csv'
+    else: # Assume file path
+        dict_file = scores
     # Load score dictionary
-    typescore = {}
-    with open(dictionary_file, 'r') as f:
+    type2score = {}
+    with open(dict_file, 'r') as f:
         for line in f:
             t,score = line.strip().split(delimiter)
-            type2score[word] = score
-    # Filter dictionary of words outside of stop range
-    if stop_radius > 0 or middle_score is None:
-        lower_stop = middle_score - stop_radius
-        upper_stop = middle_score + stop_radius
-        type2score = {t:score for t,score in type2score.items()
-                      if score <= lower_stop or score >= upper_stop}
-        return type2score
-    else:
-        return type2score
+            type2score[t] = score
+    # Filter dictionary of words inside stop lens
+    if stop_lens is not None:
+        for lower_stop,upper_stop in stop_lens:
+            type2score = {t:score for t,score in type2score.items()
+                          if score >= lower_stop and score <= upper_stop}
+    return type2score
 
 def get_freqs_from_file(filename):
     """
