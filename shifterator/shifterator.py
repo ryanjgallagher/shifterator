@@ -4,6 +4,8 @@ shifterator.py
 Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
 Last updated: June 13th, 2018
 
+Requires: Python 3
+
 TODO:
 - Define funcs to plot insets to shift graph
 - Define advanced shift graph func / decide what goes in an advanced shift
@@ -22,9 +24,9 @@ from collections import Counter
 # ------------------------------------------------------------------------------
 # ---------------------------- GENERAL SHIFT CLASS -----------------------------
 # ------------------------------------------------------------------------------
-class shift:
+class Shift:
     def __init__(self, system_1, system_2, reference_value=None,
-                 filenames=False, type2score_1=None, type2score_2=None,
+                 filenames=True, type2score_1=None, type2score_2=None,
                  stop_lens=None, delimiter=','):
         """
         Shift object for calculating weighted scores of two systems of types,
@@ -59,11 +61,11 @@ class shift:
         if isinstance(system_1, dict) and isinstance(system_2, dict):
             self.type2freq_1 = system_1
             self.type2freq_2 = system_2
-        elif isinstance(ref, basestring) and isinstance(comp, basestring):
+        elif isinstance(system_1, str) and isinstance(system_2, str):
             if filenames is True:
                 self.type2freq_1 = get_freqs_from_file(system_1)
                 self.type2freq_2 = get_freqs_from_file(system_2)
-            elif filename is False:
+            elif filenames is False:
                 self.type2freq_1 = dict(Counter(system_1.split()))
                 self.type2freq_2 = dict(Counter(system_2.split()))
         else:
@@ -73,32 +75,43 @@ class shift:
             self.type2freq_1 = dict()
             self.type2freq_2 = dict()
         # Load type2score dictionaries
-        self.stop_lens = stop_lens
-        if type_dict_1 is not None and type_dict_2 is not None:
-            self.type2score_1 = get_score_dictionary(type2score_1, stop_lens,
-                                                     delimiter)
-            self.type2score_2 = get_score_dictionary(type2score_2, stop_lens,
-                                                     delimiter)
-        elif type_dict_1 is not None:
-            self.type2score_1 = get_score_dictionary(type2score_1, stop_lens,
-                                                     delimiter)
-            self.type2score_2 = self.word2score_1
-        elif type_dict_2 is not None:
-            self.type2score_2 = get_score_dictionary(type2score_2, stop_lens,
-                                                     delimiter)
-            self.type2score_1 = self.word2score_2
+        if type2score_1 is not None and type2score_2 is not None:
+            self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
+            self.type2score_2 = get_score_dictionary(type2score_2, delimiter)
+        elif type2score_1 is not None:
+            self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
+            self.type2score_2 = self.type2score_1
+        elif type2score_2 is not None:
+            self.type2score_2 = get_score_dictionary(type2score_2, delimiter)
+            self.type2score_1 = self.type2score_2
         else:
             self.type2score_1 = {t : 1 for t in self.type2freq_1}
             self.type2score_2 = {t : 1 for t in self.type2freq_2}
+        # Filter type dictionaries by stop lense
+        self.stop_lens = stop_lens
+        if stop_lens is not None:
+            self.type2freq_1,self.type2score_1,stop_words = filter_by_scores(self.type2freq_1,
+                                                                             self.type2score_1,
+                                                                             stop_lens)
+            self.type2freq_2,self.type2score_2,stop_words = filter_by_scores(self.type2freq_2,
+                                                                             self.type2score_2,
+                                                                             stop_lens)
+            self.stop_words = stop_words
         # Set reference value
         if reference_value is not None:
             self.reference_value = reference_value
         else:
             self.reference_value = self.get_weighted_score(self.type2freq_1,
                                                            self.type2score_1)
+        # Set default score shift values
+        self.type2p_diff = None
+        self.type2s_diff = None
+        self.type2s_ref_diff = None
+        self.type2shift_score = None
 
         # TODO: add functions that allow you to easily update the type2freq dicts
-
+        # TODO: make it easy to remove/reset filter. Involves having to hold onto
+        #       stop words, their freqs, and their values
 
     def get_weighted_score(self, type2freq, type2score):
         """
@@ -148,10 +161,11 @@ class shift:
             the reference score from which to calculate the deviation. If None,
             defaults to the weighted score given by type2freq_1 and type2score_1
         normalize: bool
-            if True normalizes shift scores so they sum to 1
-        details: bool, if True returns each component of the shift score and
-                 the final normalized shift score. If false, only returns the
-                 normalized shift scores
+            if True normalizes shift scores so they sum to 1 or -1
+        details: bool,
+            if True returns each component of the shift score and the final
+            normalized shift score. If false, only returns the normalized shift
+            scores
 
         Returns
         -------
@@ -169,14 +183,16 @@ class shift:
             words are keys and values are shift scores
         """
         # Check input of type2freq and type2score dicts
-        if type2freq_1 is None or type2score_1 is None:
+        if type2freq_1 is None:
             type2freq_1 = self.type2freq_1
+        if type2score_1 is None:
             type2score_1 = self.type2score_1
-        if type2freq_2 is None or type2score_2 is None:
+        if type2freq_2 is None:
             type2freq_2 = self.type2freq_2
+        if type2score_2 is None:
             type2score_2 = self.type2score_2
         # Enforce common score vocabulary
-        if set(type2score_1.keys()).difference(type2score_2.keys()) != 0:
+        if len(set(type2score_1.keys()).difference(type2score_2.keys())) != 0:
             warning = 'Score dictionaries do not have a common vocabulary. '\
                       +'Shift is not well-defined.'
             warnings.warn(warning, Warning)
@@ -187,11 +203,10 @@ class shift:
         types = types_1.union(types_2)
         # Check input of reference value
         if reference_value is None:
-            reference_value = self.get_weighted_score(type2freq_1, type2score_1)
+            s_avg_ref = self.get_weighted_score(type2freq_1, type2score_1)
         # Get total frequencies, and average score of reference
         total_freq_1 = sum([freq for t,freq in type2freq_1.items() if t in types])
         total_freq_2 = sum([freq for t,freq in type2freq_2.items() if t in types])
-        s_avg_ref = self.get_weighted_score(type2freq_ref, type2score_ref)
         # Get relative frequency of words in reference and comparison
         type2p_1 = {t:type2freq_1[t]/total_freq_1 if t in type2freq_1 else 0
                     for t in types}
@@ -276,7 +291,8 @@ class shift:
                                                  xlabel_fontsize, ylabel_fontsize,
                                                  title_fontsize, show_plot, tight)
 
-    def get_shift_graph_simple(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
+    def get_shift_graph_simple(self, top_n=50, score_colors=('#ffff80','#FDFFD2',
+                                                             '#3377ff', '#C4CAFC'),
                                bar_type_space=0.5, width_scaling=1.4,
                                insets=True, xlabel=None, ylabel=None, title=None,
                                xlabel_fontsize=18, ylabel_fontsize=18,
@@ -316,19 +332,20 @@ class shift:
             self.get_shift_scores(details=False)
         # Sort type scores and take top_n. Reverse for plotting
         type_scores = [(t, self.type2s_diff[t], self.type2p_diff[t],
-                        self.type2shift_score[t]) for t in self.type2s_diff]
-        # reverse?
-        type_scores = sorted(type_scores, key=labmda x:abs(x[3]))[:top_n]
-        type_diffs = [100*score for (t,s_diff,p_diff,score) in type_scores]
+                        self.type2s_ref_diff[t], self.type2shift_score[t])\
+                       for t in self.type2s_diff]
+        # Reverse sorting to get highest scores, then reverse top n for plotting order
+        type_scores = sorted(type_scores, key=lambda x:abs(x[4]), reverse=True)[:top_n]
+        type_scores.reverse()
+        type_diffs = [score for (_,_,_,_,score) in type_scores]
         # Get bar colors
-        bar_colors = [bar_colors[0] if s_diff>0 else bar_colors[1]\
-                      for (word,s_diff,p_diff,score) in word_scores]
+        bar_colors = _get_bar_colors(type_scores, score_colors)
         # Plot scores, height:width ratio = 2.5:1
         f,ax = plt.subplots(figsize=(6,15))
         ax.margins(y=0.01)
         # Plot the skeleton of the word shift
         # edgecolor thing is a workaround for a bug in matplotlib
-        bars = ax.barh(range(1,len(type_scores)+1), word_diffs, .8, linewidth=1
+        bars = ax.barh(range(1,len(type_scores)+1), type_diffs, .8, linewidth=1,
                        align='center', color=bar_colors, edgecolor=['black']*top_n)
         # Add center dividing line
         ax.plot([0,0],[1,top_n], '-', color='black', linewidth=0.7)
@@ -338,15 +355,16 @@ class shift:
         x_min,x_max = ax.get_xlim()
         x_sym = width_scaling*max([abs(x_min),abs(x_max)])
         ax.set_xlim((-1*x_sym, x_sym))
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=14)
         # Flip y-axis tick labels and make sure every 5th tick is labeled
         y_ticks = list(range(1,top_n,5))+[top_n]
         y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
         ax.set_yticks(y_ticks)
-        ax.set_yticklabels(y_tick_labels)
+        ax.set_yticklabels(y_tick_labels, fontsize=14)
         # Format word labels with up/down arrows and +/-
         type_labels = _get_shift_type_labels(type_scores)
         # Add word labels to bars
-        ax = _set_bar_labels(bars, type_labels, bar_type_space=bar_type_space)
+        ax = _set_bar_labels(ax, bars, type_diffs, type_labels, bar_type_space=bar_type_space)
         # Set axis labels and title
         if xlabel is None:
             xlabel = 'Per type average score shift $\delta s_{avg,r}$ (%)'
@@ -355,13 +373,13 @@ class shift:
             ylabel = 'Type rank $r$'
         ax.set_ylabel(ylabel, fontsize=ylabel_fontsize)
         if title is None:
-            s_avg_1 = self.get_average_sentiment(self.type2freq_1,self.type2score_1)
-            s_avg_2 = self.get_average_sentiment(self.type2freq_2,self.type2score_2)
-            title = '$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(ref)}=$'+'{0:.2f}'\
-                    .format(s_avg_ref)+'\n'\
-                    +'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(comp)}=$'+'{0:.2f}'\
-                    .format(s_avg_comp)
-        ax.set_title(title_str, fontsize=14)
+            s_avg_1 = self.get_weighted_score(self.type2freq_1,self.type2score_1)
+            s_avg_2 = self.get_weighted_score(self.type2freq_2,self.type2score_2)
+            title = '$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(1)}=$'+'{0:.2f}'\
+                    .format(s_avg_1)+'\n'\
+                    +'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(2)}=$'+'{0:.2f}'\
+                    .format(s_avg_2)
+        ax.set_title(title, fontsize=14)
         # Show and return plot
         if tight:
             plt.tight_layout()
@@ -412,7 +430,42 @@ class shift:
 # ------------------------------------------------------------------------------
 # ------------------------------ HELPER FUNCTIONS ------------------------------
 # ------------------------------------------------------------------------------
-def get_score_dictionary(scores, stop_lens=None, delimiter=','):
+def filter_by_scores(type2freq, type2score, stop_lens):
+    """
+    Loads a dictionary of type scores
+
+    Parameters
+    ----------
+    type2freq: dict
+        keys are types, values are frequencies of those types
+    type2score: dict
+        keys are types, values are scores associated with those types
+    stop_lens: iteratble of 2-tuples
+        denotes intervals that should be excluded when calculating shift scores
+
+    Returns
+    -------
+    type2freq_new,type2score_new: dict,dict
+        Frequency and score dicts filtered of words whose score fall within stop window
+    """
+    type2freq_new = dict()
+    type2score_new = dict()
+    stop_words = set()
+    for lower_stop,upper_stop in stop_lens:
+        for t in type2score:
+            if ((type2score[t] < lower_stop) or (type2score[t] > upper_stop))\
+            and t not in stop_words:
+                try:
+                    type2freq_new[t] = type2freq[t]
+                except KeyError:
+                    pass
+                type2score_new[t] = type2score[t]
+            else:
+                stop_words.add(t)
+
+    return (type2freq_new, type2score_new, stop_words)
+
+def get_score_dictionary(scores, delimiter=','):
     """
     Loads a dictionary of type scores
 
@@ -450,11 +503,7 @@ def get_score_dictionary(scores, stop_lens=None, delimiter=','):
         for line in f:
             t,score = line.strip().split(delimiter)
             type2score[t] = score
-    # Filter dictionary of words inside stop lens
-    if stop_lens is not None:
-        for lower_stop,upper_stop in stop_lens:
-            type2score = {t:score for t,score in type2score.items()
-                          if score >= lower_stop and score <= upper_stop}
+
     return type2score
 
 def get_freqs_from_file(filename):
@@ -481,19 +530,19 @@ def _get_shift_type_labels(type_scores):
 
     """
     type_labels = []
-    for (t,s_diff,p_diff,total_diff) in type_scores:
+    for (t,s_diff,p_diff,s_ref_diff,total_diff) in type_scores:
         type_label = t
         if total_diff < 0:
             if p_diff < 0:
                 type_label = u'\u2193'+type_label
             else:
                 type_label = u'\u2191'+type_label
-            if s_diff < 0:
+            if s_ref_diff < 0:
                 type_label = '-'+type_label
             else:
                 type_label = '+'+type_label
         else:
-            if s_diff < 0:
+            if s_ref_diff < 0:
                 type_label = type_label+'-'
             else:
                 type_label = type_label+'+'
@@ -504,17 +553,32 @@ def _get_shift_type_labels(type_scores):
         type_labels.append(type_label)
     return type_labels
 
-def _set_bar_labels(bars, word_labels, bar_word_space=1.4):
+def _get_bar_colors(type_scores, score_colors):
+    bar_colors = []
+    for (_,s_diff,p_diff,s_ref_diff,_) in type_scores:
+        if s_ref_diff > 0:
+            if p_diff > 0:
+                bar_colors.append(score_colors[0])
+            else:
+                bar_colors.append(score_colors[1])
+        else:
+            if p_diff > 0:
+                bar_colors.append(score_colors[2])
+            else:
+                bar_colors.append(score_colors[3])
+    return bar_colors
+
+def _set_bar_labels(ax, bars, type_diffs, type_labels, bar_type_space=1.4):
     for bar_n,bar in enumerate(bars):
         y = bar.get_y()
         height = bar.get_height()
         width = bar.get_width()
-        if word_diffs[bar_n] < 0:
+        if type_diffs[bar_n] < 0:
             ha='right'
-            space = -1*bar_word_space
+            space = -1*bar_type_space
         else:
             ha='left'
-            space = bar_word_space
-        ax.text(width+space, bar_n+1, word_labels[bar_n],
+            space = bar_type_space
+        ax.text(width+space, bar_n+1, type_labels[bar_n],
                 ha=ha, va='center',fontsize=13)
     return ax
