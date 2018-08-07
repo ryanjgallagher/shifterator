@@ -293,11 +293,12 @@ class Shift:
 
     def get_shift_graph_simple(self, top_n=50, score_colors=('#ffff80','#FDFFD2',
                                                              '#3377ff', '#C4CAFC'),
-                               bar_type_space=0.5, width_scaling=1.4,
+                               width=6, height=15, width_scaling=1.4,
+                               bar_type_space_scaling=0.05,
                                insets=True, xlabel=None, ylabel=None, title=None,
                                xlabel_fontsize=18, ylabel_fontsize=18,
                                title_fontsize=14, show_plot=True, tight=True):
-        # TODO: can the later arguments be passed as args straight to plotting?
+        # TODO: **kwargs
         """
         Plot the simple shift graph between two systems of types
 
@@ -310,11 +311,12 @@ class Shift:
             colors to use for bars where first and second entries are the colors
             for types that have positive and negative relative score differences
             relatively
-        bar_type_space: float
-            space between the end of each bar and the corresponding label
+        bar_type_space_scaling: float
+            parameter between 0 and 1 that controls the space between the end of
+            each bar and its text label. Increase if more space is desired
         width_scaling: float
-            parameter that controls the width of the x-axis. If types overlap
-            with the y-axis then increase the scaling
+            parameter between 0 and 1 that controls the width of the x-axis.
+            If types overlap with the y-axis then increase the scaling
         insets: bool
             whether to show insets showing the cumulative contribution to the
             shift by ranked words, and the relative sizes of each system
@@ -337,34 +339,41 @@ class Shift:
         # Reverse sorting to get highest scores, then reverse top n for plotting order
         type_scores = sorted(type_scores, key=lambda x:abs(x[4]), reverse=True)[:top_n]
         type_scores.reverse()
-        type_diffs = [score for (_,_,_,_,score) in type_scores]
+        type_diffs = [100*score for (_,_,_,_,score) in type_scores]
+
+        # Plot scores, height:width ratio = 2.5:1
+        f,ax = plt.subplots(figsize=(width,height))
+        ax.margins(y=0.01)
         # Get bar colors
         bar_colors = _get_bar_colors(type_scores, score_colors)
-        # Plot scores, height:width ratio = 2.5:1
-        f,ax = plt.subplots(figsize=(6,15))
-        ax.margins(y=0.01)
         # Plot the skeleton of the word shift
-        # edgecolor thing is a workaround for a bug in matplotlib
         bars = ax.barh(range(1,len(type_scores)+1), type_diffs, .8, linewidth=1,
                        align='center', color=bar_colors, edgecolor=['black']*top_n)
+
         # Add center dividing line
         ax.plot([0,0],[1,top_n], '-', color='black', linewidth=0.7)
-        # Make sure there's the same amount of space on either side of y-axis,
-        # and add space for word labels using 'width_scaling'
-        # TODO: can we automate selection of width_scaling?
-        x_min,x_max = ax.get_xlim()
-        x_sym = width_scaling*max([abs(x_min),abs(x_max)])
-        ax.set_xlim((-1*x_sym, x_sym))
-        ax.set_xticklabels(ax.get_xticklabels(), fontsize=14)
+
         # Flip y-axis tick labels and make sure every 5th tick is labeled
         y_ticks = list(range(1,top_n,5))+[top_n]
         y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
         ax.set_yticks(y_ticks)
         ax.set_yticklabels(y_tick_labels, fontsize=14)
+
+        # Estimate bar_type_space as a fraction of largest xlim
+        x_width = 2*abs(max(ax.get_xlim(), key=lambda x: abs(x)))
+        bar_type_space = bar_type_space_scaling*x_width
         # Format word labels with up/down arrows and +/-
         type_labels = _get_shift_type_labels(type_scores)
         # Add word labels to bars
-        ax = _set_bar_labels(ax, bars, type_diffs, type_labels, bar_type_space=bar_type_space)
+        ax,text_objs = _set_bar_labels(ax, bars, type_diffs, type_labels,
+                                       bar_type_space=bar_type_space)
+        # Adjust for width of word labels and make x-axis symmetric
+        ax = _adjust_axes_for_labels(f, ax, bars, text_objs,
+                                     bar_type_space=bar_type_space,
+                                     width_scaling=width_scaling)
+        for tick in ax.xaxis.get_major_ticks():
+                tick.label.set_fontsize(12)
+
         # Set axis labels and title
         if xlabel is None:
             xlabel = 'Per type average score shift $\delta s_{avg,r}$ (%)'
@@ -380,6 +389,7 @@ class Shift:
                     +'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(2)}=$'+'{0:.2f}'\
                     .format(s_avg_2)
         ax.set_title(title, fontsize=14)
+
         # Show and return plot
         if tight:
             plt.tight_layout()
@@ -569,6 +579,7 @@ def _get_bar_colors(type_scores, score_colors):
     return bar_colors
 
 def _set_bar_labels(ax, bars, type_diffs, type_labels, bar_type_space=1.4):
+    text_objs = []
     for bar_n,bar in enumerate(bars):
         y = bar.get_y()
         height = bar.get_height()
@@ -579,6 +590,24 @@ def _set_bar_labels(ax, bars, type_diffs, type_labels, bar_type_space=1.4):
         else:
             ha='left'
             space = bar_type_space
-        ax.text(width+space, bar_n+1, type_labels[bar_n],
-                ha=ha, va='center',fontsize=13)
+        t = ax.text(width+space, bar_n+1, type_labels[bar_n],
+                    ha=ha, va='center',fontsize=13)
+        text_objs.append(t)
+    return (ax, text_objs)
+
+def _adjust_axes_for_labels(f, ax, bars, text_objs, bar_type_space, width_scaling):
+    # Get the max length
+    lengths = []
+    for bar_n,bar in enumerate(bars):
+        bar_length = bar.get_width()
+        bbox = text_objs[bar_n].get_window_extent(renderer=f.canvas.get_renderer())
+        bbox = ax.transData.inverted().transform(bbox)
+        text_length = abs(bbox[0][0]-bbox[1][0])
+        if bar_length > 0:
+            lengths.append(bar_length+text_length+bar_type_space)
+        else:
+            lengths.append(bar_length-text_length-bar_type_space)
+    max_length = width_scaling*abs(sorted(lengths, key=lambda x: abs(x), reverse=True)[0])
+    # Symmetrize the axis around that max length
+    ax.set_xlim((-1*max_length, max_length))
     return ax
