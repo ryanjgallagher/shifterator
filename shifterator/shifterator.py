@@ -113,6 +113,33 @@ class Shift:
         # TODO: make it easy to remove/reset filter. Involves having to hold onto
         #       stop words, their freqs, and their values
 
+    def get_types(self, type2freq_1=None, type2score_1=None,
+                  type2freq_2=None, type2score_2=None):
+        """
+        Returns the common "vocabulary" between the types of both systems and
+        the types in the dictionaries
+
+        Parameters
+        ----------
+        type2freq: dict
+            keys are types and values are frequencies. If None, defaults to the
+            system_1 and system_2 type2freq dicts respectively
+        type2score: dict
+            keys are types and values are scores. If None, defaults to the
+            system_1 and system_2 type2score dicts respectively
+        """
+        # Enforce common score vocabulary
+        if len(set(type2score_1.keys()).difference(type2score_2.keys())) != 0:
+            warning = 'Score dictionaries do not have a common vocabulary. '\
+                      +'Shift is not well-defined.'
+            warnings.warn(warning, Warning)
+            return
+        # Get observed types that are also in score dicts
+        types_1 = set(type2freq_1.keys()).intersection(set(type2score_1.keys()))
+        types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
+        types = types_1.union(types_2)
+        return types
+
     def get_weighted_score(self, type2freq, type2score):
         """
         Calculate the average score of the system specified by the frequencies
@@ -192,26 +219,21 @@ class Shift:
         if type2score_2 is None:
             type2score_2 = self.type2score_2
         # Enforce common score vocabulary
-        if len(set(type2score_1.keys()).difference(type2score_2.keys())) != 0:
-            warning = 'Score dictionaries do not have a common vocabulary. '\
-                      +'Shift is not well-defined.'
-            warnings.warn(warning, Warning)
-            return
-        # Get observed types that are also in score dicts
-        types_1 = set(type2freq_1.keys()).intersection(set(type2score_1.keys()))
-        types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
-        types = types_1.union(types_2)
-        # Check input of reference value
-        if reference_value is None:
-            s_avg_ref = self.get_weighted_score(type2freq_1, type2score_1)
-        # Get total frequencies, and average score of reference
+        types = self.get_types(type2freq_1, type2score_1,
+                               type2freq_2, type2score_2)
+
+        # Get total frequencies
         total_freq_1 = sum([freq for t,freq in type2freq_1.items() if t in types])
         total_freq_2 = sum([freq for t,freq in type2freq_2.items() if t in types])
-        # Get relative frequency of words in reference and comparison
+        # Get relative frequency of words in both systems
         type2p_1 = {t:type2freq_1[t]/total_freq_1 if t in type2freq_1 else 0
                     for t in types}
         type2p_2 = {t:type2freq_2[t]/total_freq_2 if t in type2freq_2 else 0
                     for t in types}
+
+        # Check input of reference value
+        if reference_value is None:
+            s_avg_ref = self.get_weighted_score(type2freq_1, type2score_1)
         # Calculate relative diffs in freq
         type2p_diff = {t:type2p_2[t]-type2p_1[t] for t in types}
         # Calculate relative diffs in score and relative diff from ref
@@ -220,15 +242,18 @@ class Shift:
         for t in types:
             type2s_diff[t] = type2score_2[t]-type2score_1[t]
             type2s_ref_diff[t] = 0.5*(type2score_2[t]+type2score_1[t])-s_avg_ref
+
         # Calculate total shift scores
         type2shift_score = {t : type2p_diff[t]*type2s_ref_diff[t]\
                                 +0.5*type2s_diff[t]*(type2p_2[t]+type2p_1[t])
                                 for t in types if t in types}
+
         # Normalize the total shift scores
         if normalize:
             total_diff = abs(sum(type2shift_score.values()))
             type2shift_score = {t : shift_score/total_diff for t,shift_score
                                 in type2shift_score.items()}
+
         # Set results in shift object
         self.type2p_diff = type2p_diff
         self.type2s_diff = type2s_diff
@@ -239,6 +264,74 @@ class Shift:
             return type2p_diff,type2s_diff,type2s_ref_diff,type2shift_score
         else:
             return type2shift_score
+
+    def get_shift_component_sums(self, type2freq_1=None, type2score_1=None,
+                                 type2freq_2=None, type2score_2=None,
+                                 reference_value=None, normalize=True):
+        """
+
+        """
+        # Check input of type2freq and type2score dicts
+        if type2freq_1 is None:
+            type2freq_1 = self.type2freq_1
+        if type2score_1 is None:
+            type2score_1 = self.type2score_1
+        if type2freq_2 is None:
+            type2freq_2 = self.type2freq_2
+        if type2score_2 is None:
+            type2score_2 = self.type2score_2
+        # Get shift scores
+        if self.type2shift_score is None:
+            shift_scores = self.get_shift_scores(type2freq_1=type2freq_1,
+                                                 type2score_1=type2score_1,
+                                                 type2freq_2=type2freq_2,
+                                                 type2score_2=type2score_2,
+                                                 reference_value=reference_value,
+                                                 normalize=normalize, details=True)
+        else:
+            shift_scores = [(t, self.type2s_diff[t], self.type2p_diff[t],
+                             self.type2s_ref_diff[t], self.type2shift_score[t])\
+                             for t in self.type2s_diff]
+
+        # Enforce common score vocabulary
+        types = self.get_types(type2freq_1, type2score_1,
+                               type2freq_2, type2score_2)
+        # Get relative frequencies of types
+        total_freq_1 = sum([freq for t,freq in type2freq_1.items() if t in types])
+        total_freq_2 = sum([freq for t,freq in type2freq_2.items() if t in types])
+        type2p_1 = {t:type2freq_1[t]/total_freq_1 if t in type2freq_1 else 0
+                    for t in types}
+        type2p_2 = {t:type2freq_2[t]/total_freq_2 if t in type2freq_2 else 0
+                    for t in types}
+
+        # Sum up components of shift score
+        pos_freq_pos_score = 0
+        pos_freq_neg_score = 0
+        neg_freq_pos_score = 0
+        neg_freq_neg_score = 0
+        pos_s_diff = 0
+        neg_s_diff = 0
+        for t,s_diff,p_diff,s_ref_diff, _ in shift_scores:
+            # Get contribution of p_diff*s_ref_diff term
+            if p_diff > 0:
+                if s_ref_diff > 0:
+                    pos_freq_pos_score += p_diff*s_ref_diff
+                else:
+                    pos_freq_neg_score += p_diff*s_ref_diff
+            else:
+                if s_ref_diff > 0:
+                    neg_freq_pos_score += p_diff*s_ref_diff
+                else:
+                    neg_freq_neg_score += p_diff*s_ref_diff
+            # Get contribution of s_diff term
+            if s_diff > 0:
+                pos_s_diff += 0.5*(type2p_1[t]+type2p_2[t])*s_diff
+            else:
+                neg_s_diff += 0.5*(type2p_1[t]+type2p_2[t])*s_diff
+
+        return (pos_freq_pos_score, pos_freq_neg_score,
+                neg_freq_pos_score, neg_freq_neg_score,
+                pos_s_diff, neg_s_diff)
 
     def get_shift_graph(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
                         bar_type_space=0.5, width_scaling=1.4, insets=True,
@@ -292,7 +385,8 @@ class Shift:
                                                  title_fontsize, show_plot, tight)
 
     def get_shift_graph_simple(self, top_n=50, score_colors=('#ffff80','#FDFFD2',
-                                                             '#3377ff', '#C4CAFC'),
+                                                             '#3377ff', '#C4CAFC',
+                                                             '#9E75B7', '#FECC5D'),
                                width=6, height=15, width_scaling=1.4,
                                bar_type_space_scaling=0.05,
                                insets=True, xlabel=None, ylabel=None, title=None,
@@ -330,6 +424,8 @@ class Shift:
         ax
             matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
+        # TODO: wrap the parts into functions (basic bars, contributions, handling
+        #       the labels, etc)
         if self.type2shift_score is None:
             self.get_shift_scores(details=False)
         # Sort type scores and take top_n. Reverse for plotting
@@ -341,23 +437,32 @@ class Shift:
         type_scores.reverse()
         type_diffs = [100*score for (_,_,_,_,score) in type_scores]
 
+        # Get bar colors
+        bar_colors = _get_bar_colors(type_scores, score_colors)
         # Plot scores, height:width ratio = 2.5:1
         f,ax = plt.subplots(figsize=(width,height))
         ax.margins(y=0.01)
-        # Get bar colors
-        bar_colors = _get_bar_colors(type_scores, score_colors)
         # Plot the skeleton of the word shift
-        bars = ax.barh(range(1,len(type_scores)+1), type_diffs, .8, linewidth=1,
+        bars = ax.barh(range(1,len(type_scores)+1), type_diffs, 0.8, linewidth=1,
                        align='center', color=bar_colors, edgecolor=['black']*top_n)
 
-        # Add center dividing line
-        ax.plot([0,0],[1,top_n], '-', color='black', linewidth=0.7)
-
-        # Flip y-axis tick labels and make sure every 5th tick is labeled
-        y_ticks = list(range(1,top_n,5))+[top_n]
-        y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
-        ax.set_yticks(y_ticks)
-        ax.set_yticklabels(y_tick_labels, fontsize=14)
+        # Get total contribution component bars
+        #+freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
+        total_comp_sums = self.get_shift_component_sums()
+        total_comp_sums = [100*s for s in total_comp_sums]
+        if total_comp_sums[-1] == 0 and total_comp_sums[-2] == 0:
+            # Only one score dictionary used, don't plot those contribution bars
+            ys = [top_n+2,top_n+3,top_n+3,top_n+4,top_n+4]
+            total_comp_sums = total_comp_sums[:len(total_comp_sums)-2]
+            comp_colors = ['#707070', score_colors[3], score_colors[2], score_colors[1],
+                           score_colors[0]]
+        else:
+            ys = [top_n+2,top_n+3,top_n+3,top_n+4,top_n+4,top_n+5,top_n+5]
+            comp_colors = ['#707070', score_colors[5], score_colors[4], score_colors[3],
+                           score_colors[2], score_colors[1], score_colors[0]]
+        comp_bars = [sum(total_comp_sums)] + list(reversed(total_comp_sums))
+        comp_bars = ax.barh(ys, comp_bars, 0.8, linewidth=1, align='center',
+                            color=comp_colors, edgecolor=['black']*top_n)
 
         # Estimate bar_type_space as a fraction of largest xlim
         x_width = 2*abs(max(ax.get_xlim(), key=lambda x: abs(x)))
@@ -371,8 +476,22 @@ class Shift:
         ax = _adjust_axes_for_labels(f, ax, bars, text_objs,
                                      bar_type_space=bar_type_space,
                                      width_scaling=width_scaling)
+        # Make x-axis tick labels bigger
         for tick in ax.xaxis.get_major_ticks():
                 tick.label.set_fontsize(12)
+
+        # Flip y-axis tick labels and make sure every 5th tick is labeled
+        y_ticks = list(range(1,top_n,5))+[top_n]
+        y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
+        ax.set_yticks(y_ticks)
+        ax.set_yticklabels(y_tick_labels, fontsize=14)
+
+        # Add center dividing line
+        y_min,y_max = ax.get_ylim()
+        ax.plot([0,0],[1,y_max], '-', color='black', linewidth=0.7)
+        # Add dividing line between words and component bars
+        x_min,x_max = ax.get_xlim()
+        ax.plot([x_min,x_max], [top_n+1,top_n+1], '-', color='black', linewidth=0.7)
 
         # Set axis labels and title
         if xlabel is None:
