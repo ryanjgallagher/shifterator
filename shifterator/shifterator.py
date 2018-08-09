@@ -287,7 +287,8 @@ class Shift:
                                                  type2freq_2=type2freq_2,
                                                  type2score_2=type2score_2,
                                                  reference_value=reference_value,
-                                                 normalize=normalize, details=True)
+                                                 normalize=normalize,
+                                                 details=True)
         else:
             shift_scores = [(t, self.type2s_diff[t], self.type2p_diff[t],
                              self.type2s_ref_diff[t], self.type2shift_score[t])\
@@ -389,7 +390,7 @@ class Shift:
                                                              '#9E75B7', '#FECC5D'),
                                width=6, height=15, width_scaling=1.4,
                                bar_type_space_scaling=0.05,
-                               insets=True, xlabel=None, ylabel=None, title=None,
+                               inset=True, xlabel=None, ylabel=None, title=None,
                                xlabel_fontsize=18, ylabel_fontsize=18,
                                title_fontsize=14, show_plot=True, tight=True):
         # TODO: **kwargs
@@ -452,12 +453,12 @@ class Shift:
         total_comp_sums = [100*s for s in total_comp_sums]
         if total_comp_sums[-1] == 0 and total_comp_sums[-2] == 0:
             # Only one score dictionary used, don't plot those contribution bars
-            ys = [top_n+2,top_n+3,top_n+3,top_n+4,top_n+4]
+            ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5]
             total_comp_sums = total_comp_sums[:len(total_comp_sums)-2]
             comp_colors = ['#707070', score_colors[3], score_colors[2], score_colors[1],
                            score_colors[0]]
         else:
-            ys = [top_n+2,top_n+3,top_n+3,top_n+4,top_n+4,top_n+5,top_n+5]
+            ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5,top_n+6.5,top_n+6.5]
             comp_colors = ['#707070', score_colors[5], score_colors[4], score_colors[3],
                            score_colors[2], score_colors[1], score_colors[0]]
         comp_bars = [sum(total_comp_sums)] + list(reversed(total_comp_sums))
@@ -492,6 +493,28 @@ class Shift:
         # Add dividing line between words and component bars
         x_min,x_max = ax.get_xlim()
         ax.plot([x_min,x_max], [top_n+1,top_n+1], '-', color='black', linewidth=0.7)
+        ax.plot([x_min,x_max], [top_n+2.75, top_n+2.75], '-', color='black', linewidth=0.5)
+
+        if inset:
+            # Get cumulative diff
+            scores = sorted([100*s for s in self.type2shift_score.values()],
+                             key=lambda x:abs(x), reverse=True)
+            cum_scores = np.cumsum(scores)
+            # Add inset axes
+            left, bottom, width, height = [0.2, 0.18, 0.125, 0.17]
+            in_ax = f.add_axes([left, bottom, width, height])
+            # Plot cumulative diff
+            in_ax.semilogy(cum_scores, range(len(cum_scores)), '-o', color='black',
+                           linewidth=0.5, markersize=1.0)
+            in_ax.set_xlabel('$\sum_i^r \delta s_{avg,i}$')
+            # Set view line
+            in_x_min,in_x_max = in_ax.get_xlim()
+            in_ax.plot([in_x_min,in_x_max], [top_n,top_n], '-', color='black', linewidth=0.5)
+            # Clean up axes
+            in_y_min,in_y_max = in_ax.get_ylim()
+            in_ax.set_ylim((in_y_max, in_y_min))
+            in_ax.margins(x=0)
+            in_ax.margins(y=0)
 
         # Set axis labels and title
         if xlabel is None:
