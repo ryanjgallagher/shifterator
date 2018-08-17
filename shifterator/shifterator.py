@@ -382,34 +382,31 @@ class Shift:
         # Reverse sorting to get highest scores, then reverse top n for plotting order
         type_scores = sorted(type_scores, key=lambda x:abs(x[-1]), reverse=True)[:top_n]
         type_scores.reverse()
-        type_diffs = [100*score for (_,_,_,_,_,score) in type_scores]
 
-        # Get bar colors
-        bar_colors = _get_bar_colors(type_scores, score_colors)
         # Plot scores, height:width ratio = 2.5:1
         f,ax = plt.subplots(figsize=(width,height))
         ax.margins(y=0.01)
+        # Get bar heights
+        heights_comp1, heights_comp2, bottoms, bar_ends = _get_bar_heights(type_scores)
+        # Get bar colors
+        bar_colors_comp1,bar_colors_comp2 = _get_bar_colors(type_scores, score_colors)
         # Plot the skeleton of the word shift
-        bars = ax.barh(range(1,len(type_scores)+1), type_diffs, 0.8, linewidth=1,
-                       align='center', color=bar_colors, edgecolor=['black']*top_n)
+        ax.barh(range(1,len(type_scores)+1), heights_comp1, 0.8, linewidth=1,
+                       align='center', color=bar_colors_comp1, edgecolor=['black']*top_n)
+        ax.barh(range(1, len(type_scores)+1), heights_comp2, 0.8, left=bottoms,
+                       linewidth=1, align='center', color=bar_colors_comp2, edgecolor=['black']*top_n)
 
         # Get total contribution component bars
         # +freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
         total_comp_sums = self.get_shift_component_sums()
         total_comp_sums = [100*s for s in total_comp_sums]
-        if total_comp_sums[-1] == 0 and total_comp_sums[-2] == 0:
-            # Only one score dictionary used, don't plot those contribution bars
-            ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5]
-            total_comp_sums = total_comp_sums[:len(total_comp_sums)-2]
-            comp_colors = ['#707070', score_colors[3], score_colors[2], score_colors[1],
-                           score_colors[0]]
-        else:
-            ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5,top_n+6.5,top_n+6.5]
-            comp_colors = ['#707070', score_colors[5], score_colors[4], score_colors[3],
-                           score_colors[2], score_colors[1], score_colors[0]]
+        ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5,top_n+6.5,top_n+6.5]
+        comp_colors = ['#707070', score_colors[5], score_colors[4], score_colors[3],
+                       score_colors[2], score_colors[1], score_colors[0]]
         comp_bars = [sum(total_comp_sums)] + list(reversed(total_comp_sums))
-        comp_bars = ax.barh(ys, comp_bars, 0.8, linewidth=1, align='center',
+        ax.barh(ys, comp_bars, 0.8, linewidth=1, align='center',
                             color=comp_colors, edgecolor=['black']*top_n)
+        # TODO: add symbols to ends of component bars
 
         # Estimate bar_type_space as a fraction of largest xlim
         x_width = 2*abs(max(ax.get_xlim(), key=lambda x: abs(x)))
@@ -417,10 +414,10 @@ class Shift:
         # Format word labels with up/down arrows and +/-
         type_labels = _get_shift_type_labels(type_scores)
         # Add word labels to bars
-        ax,text_objs = _set_bar_labels(ax, bars, type_diffs, type_labels,
+        ax,text_objs = _set_bar_labels(ax, bar_ends, type_labels,
                                        bar_type_space=bar_type_space)
         # Adjust for width of word labels and make x-axis symmetric
-        ax = _adjust_axes_for_labels(f, ax, bars, text_objs,
+        ax = _adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs,
                                      bar_type_space=bar_type_space,
                                      width_scaling=width_scaling)
         # Make x-axis tick labels bigger
@@ -613,27 +610,64 @@ def _get_shift_type_labels(type_scores):
     return type_labels
 
 def _get_bar_colors(type_scores, score_colors):
-    bar_colors = []
+    """
+
+    """
+    bar_colors_comp1 = []
+    bar_colors_comp2 = []
     for (_,s_diff,p_diff,p_avg,s_ref_diff,_) in type_scores:
+        # Get first p_diff/s_ref_diff comp colors
         if s_ref_diff > 0:
             if p_diff > 0:
-                bar_colors.append(score_colors[0])
+                bar_colors_comp1.append(score_colors[0])
             else:
-                bar_colors.append(score_colors[1])
+                bar_colors_comp1.append(score_colors[1])
         else:
             if p_diff > 0:
-                bar_colors.append(score_colors[2])
+                bar_colors_comp1.append(score_colors[2])
             else:
-                bar_colors.append(score_colors[3])
-    return bar_colors
+                bar_colors_comp1.append(score_colors[3])
+        # Get s_diff comp colors
+        if s_diff > 0:
+            bar_colors_comp2.append(score_colors[4])
+        else:
+            bar_colors_comp2.append(score_colors[5])
+    return (bar_colors_comp1, bar_colors_comp2)
 
-def _set_bar_labels(ax, bars, type_diffs, type_labels, bar_type_space=1.4):
+def _get_bar_heights(type_scores):
+    """
+    tuple: (bar 1 height, bar 2 bottom, bar 2 height)
+    """
+    heights_comp1 = []
+    heights_comp2 = []
+    bottoms = []
+    bar_ends = []
+    for (_,s_diff,p_diff,p_avg,s_ref_diff,_) in type_scores:
+        heights_comp1.append(100*p_diff*s_ref_diff)
+        heights_comp2.append(100*p_avg*s_diff)
+        # Determine if direction of comp bars are congruent
+        if np.sign(s_ref_diff*p_diff)*np.sign(s_diff) == 1:
+            contribution = 100*(p_diff*s_ref_diff+p_avg*s_diff)
+            bar_ends.append(contribution)
+            if np.sign(s_diff) == 1:
+                bottoms.append(100*p_diff*s_ref_diff)
+            else:
+                bottoms.append(contribution)
+        else:
+            bottoms.append(0)
+            if abs(s_ref_diff*p_diff) > abs(p_avg*s_diff):
+                bar_ends.append(100*s_ref_diff*p_diff)
+            else:
+                bar_ends.append(100*p_avg*s_diff)
+
+    return (heights_comp1, heights_comp2, bottoms, bar_ends)
+
+def _set_bar_labels(ax, bar_ends, type_labels, bar_type_space=1.4):
     text_objs = []
-    for bar_n,bar in enumerate(bars):
-        y = bar.get_y()
-        height = bar.get_height()
-        width = bar.get_width()
-        if type_diffs[bar_n] < 0:
+    for bar_n,height in enumerate(range(len(bar_ends))):
+        #height = bar.get_height()
+        width = bar_ends[bar_n]
+        if bar_ends[bar_n] < 0:
             ha='right'
             space = -1*bar_type_space
         else:
@@ -644,11 +678,12 @@ def _set_bar_labels(ax, bars, type_diffs, type_labels, bar_type_space=1.4):
         text_objs.append(t)
     return (ax, text_objs)
 
-def _adjust_axes_for_labels(f, ax, bars, text_objs, bar_type_space, width_scaling):
+def _adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs,
+                            bar_type_space, width_scaling):
     # Get the max length
     lengths = []
-    for bar_n,bar in enumerate(bars):
-        bar_length = bar.get_width()
+    for bar_n,bar_end in enumerate(bar_ends):
+        bar_length = bar_end
         bbox = text_objs[bar_n].get_window_extent(renderer=f.canvas.get_renderer())
         bbox = ax.transData.inverted().transform(bbox)
         text_length = abs(bbox[0][0]-bbox[1][0])
@@ -656,6 +691,10 @@ def _adjust_axes_for_labels(f, ax, bars, text_objs, bar_type_space, width_scalin
             lengths.append(bar_length+text_length+bar_type_space)
         else:
             lengths.append(bar_length-text_length-bar_type_space)
+    # Add the top component bars to the lengths to check
+    comp_bars = [abs(b) for b in comp_bars]
+    lengths += comp_bars
+    # Get max length
     max_length = width_scaling*abs(sorted(lengths, key=lambda x: abs(x), reverse=True)[0])
     # Symmetrize the axis around that max length
     ax.set_xlim((-1*max_length, max_length))
