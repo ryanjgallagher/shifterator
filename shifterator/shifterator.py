@@ -131,7 +131,7 @@ class Shift:
             warning = 'Score dictionaries do not have a common vocabulary. '\
                       +'Shift is not well-defined.'
             warnings.warn(warning, Warning)
-            return
+            #return
         # Get observed types that are also in score dicts
         types_1 = set(type2freq_1.keys()).intersection(set(type2score_1.keys()))
         types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
@@ -219,6 +219,11 @@ class Shift:
             type2freq_2 = self.type2freq_2
         if type2score_2 is None:
             type2score_2 = self.type2score_2
+
+        # TODO: get rid of this hack!
+        type2score_1 = {t:s for t,s in type2score_1.items() if t in type2score_2}
+        type2score_2 = {t:s for t,s in type2score_2.items() if t in type2score_1}
+
         # Enforce common score vocabulary
         types = self.get_types(type2freq_1, type2score_1,
                                type2freq_2, type2score_2)
@@ -375,9 +380,9 @@ class Shift:
                         self.type2p_avg[t], self.type2s_ref_diff[t],
                         self.type2shift_score[t]) for t in self.type2s_diff]
         # Reverse sorting to get highest scores, then reverse top n for plotting order
-        type_scores = sorted(type_scores, key=lambda x:abs(x[4]), reverse=True)[:top_n]
+        type_scores = sorted(type_scores, key=lambda x:abs(x[-1]), reverse=True)[:top_n]
         type_scores.reverse()
-        type_diffs = [100*score for (_,_,_,_,score) in type_scores]
+        type_diffs = [100*score for (_,_,_,_,_,score) in type_scores]
 
         # Get bar colors
         bar_colors = _get_bar_colors(type_scores, score_colors)
