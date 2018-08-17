@@ -106,6 +106,7 @@ class Shift:
         # Set default score shift values
         self.type2p_diff = None
         self.type2s_diff = None
+        self.type2p_avg = None
         self.type2s_ref_diff = None
         self.type2shift_score = None
 
@@ -113,8 +114,7 @@ class Shift:
         # TODO: make it easy to remove/reset filter. Involves having to hold onto
         #       stop words, their freqs, and their values
 
-    def get_types(self, type2freq_1=None, type2score_1=None,
-                  type2freq_2=None, type2score_2=None):
+    def get_types(self, type2freq_1, type2score_1, type2freq_2, type2score_2):
         """
         Returns the common "vocabulary" between the types of both systems and
         the types in the dictionaries
@@ -122,11 +122,9 @@ class Shift:
         Parameters
         ----------
         type2freq: dict
-            keys are types and values are frequencies. If None, defaults to the
-            system_1 and system_2 type2freq dicts respectively
+            keys are types and values are frequencies
         type2score: dict
-            keys are types and values are scores. If None, defaults to the
-            system_1 and system_2 type2score dicts respectively
+            keys are types and values are scores
         """
         # Enforce common score vocabulary
         if len(set(type2score_1.keys()).difference(type2score_2.keys())) != 0:
@@ -202,6 +200,9 @@ class Shift:
         type2s_diff: dict,
             if details is True, returns dict where keys are types and values are
             the relative differences in score, i.e. s_i,2 - s_i,1 for type i
+        type2p_avg: dict,
+            if details is True, returns dict where keys are types and values are
+            the average relative frequencies, i.e. 0.5*(p_i,1+p_i,2) for type i
         type2s_ref_diff: dict
             if details is True, returns dict where keys are types and values are
             relative deviation from reference score, i.e. 0.5*(s_i,2+s_i,1)-s_ref
@@ -225,11 +226,13 @@ class Shift:
         # Get total frequencies
         total_freq_1 = sum([freq for t,freq in type2freq_1.items() if t in types])
         total_freq_2 = sum([freq for t,freq in type2freq_2.items() if t in types])
-        # Get relative frequency of words in both systems
+        # Get relative frequency of types in both systems
         type2p_1 = {t:type2freq_1[t]/total_freq_1 if t in type2freq_1 else 0
                     for t in types}
         type2p_2 = {t:type2freq_2[t]/total_freq_2 if t in type2freq_2 else 0
                     for t in types}
+        # Get average relative frequency of types
+        type2p_avg = {t:0.5*(type2p_1[t]+type2p_2[t]) for t in types}
 
         # Check input of reference value
         if reference_value is None:
@@ -245,7 +248,7 @@ class Shift:
 
         # Calculate total shift scores
         type2shift_score = {t : type2p_diff[t]*type2s_ref_diff[t]\
-                                +0.5*type2s_diff[t]*(type2p_2[t]+type2p_1[t])
+                                +type2s_diff[t]*type2p_avg[t]
                                 for t in types if t in types}
 
         # Normalize the total shift scores
@@ -257,11 +260,12 @@ class Shift:
         # Set results in shift object
         self.type2p_diff = type2p_diff
         self.type2s_diff = type2s_diff
+        self.type2p_avg = type2p_avg
         self.type2s_ref_diff = type2s_ref_diff
         self.type2shift_score = type2shift_score
         # Return shift scores
         if details:
-            return type2p_diff,type2s_diff,type2s_ref_diff,type2shift_score
+            return type2p_diff,type2s_diff,type2p_avg,type2s_ref_diff,type2shift_score
         else:
             return type2shift_score
 
@@ -291,19 +295,8 @@ class Shift:
                                                  details=True)
         else:
             shift_scores = [(t, self.type2s_diff[t], self.type2p_diff[t],
-                             self.type2s_ref_diff[t], self.type2shift_score[t])\
-                             for t in self.type2s_diff]
-
-        # Enforce common score vocabulary
-        types = self.get_types(type2freq_1, type2score_1,
-                               type2freq_2, type2score_2)
-        # Get relative frequencies of types
-        total_freq_1 = sum([freq for t,freq in type2freq_1.items() if t in types])
-        total_freq_2 = sum([freq for t,freq in type2freq_2.items() if t in types])
-        type2p_1 = {t:type2freq_1[t]/total_freq_1 if t in type2freq_1 else 0
-                    for t in types}
-        type2p_2 = {t:type2freq_2[t]/total_freq_2 if t in type2freq_2 else 0
-                    for t in types}
+                             self.type2p_avg[t], self.type2s_ref_diff[t],
+                             self.type2shift_score[t]) for t in self.type2s_diff]
 
         # Sum up components of shift score
         pos_freq_pos_score = 0
@@ -312,7 +305,7 @@ class Shift:
         neg_freq_neg_score = 0
         pos_s_diff = 0
         neg_s_diff = 0
-        for t,s_diff,p_diff,s_ref_diff, _ in shift_scores:
+        for t,s_diff,p_diff,p_avg,s_ref_diff, _ in shift_scores:
             # Get contribution of p_diff*s_ref_diff term
             if p_diff > 0:
                 if s_ref_diff > 0:
@@ -326,73 +319,21 @@ class Shift:
                     neg_freq_neg_score += p_diff*s_ref_diff
             # Get contribution of s_diff term
             if s_diff > 0:
-                pos_s_diff += 0.5*(type2p_1[t]+type2p_2[t])*s_diff
+                pos_s_diff += p_avg*s_diff
             else:
-                neg_s_diff += 0.5*(type2p_1[t]+type2p_2[t])*s_diff
+                neg_s_diff += p_avg*s_diff
 
         return (pos_freq_pos_score, pos_freq_neg_score,
                 neg_freq_pos_score, neg_freq_neg_score,
                 pos_s_diff, neg_s_diff)
 
-    def get_shift_graph(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
-                        bar_type_space=0.5, width_scaling=1.4, insets=True,
-                        advanced=False, xlabel=None, ylabel=None, title=None,
-                        xlabel_fontsize=18, ylabel_fontsize=18,
-                        title_fontsize=14, show_plot=True, tight=True):
-        # TODO: can the later arguments be passed as args straight to plotting?
-        """
-        Plot the shift graph between two systems of types
-
-        Parameters
-        ----------
-        top_n: int
-            display the top_n types as sorted by their absolute contribution to
-            the difference between systems
-        bar_colors: 4-tuple
-            colors to use for bars where first and second entries are the colors
-            for types that have positive and negative relative score differences
-            relatively
-        bar_type_space: float
-            space between the end of each bar and the corresponding label
-        width_scaling: float
-            parameter that controls the width of the x-axis. If types overlap
-            with the y-axis then increase the scaling
-        insets: bool
-            whether to show insets showing the cumulative contribution to the
-            shift by ranked words, and the relative sizes of each system
-        advanced: bool
-            whether to return an advanced shift figure
-        show_plot: bool
-            whether to show plot on finish
-        tight: bool
-            whether to call plt.tight_layout() on the plot
-
-        Returns
-        -------
-        ax
-            matplotlib ax of shift graph. Displays shift graph if show_plot=True
-        """
-        if not advanced:
-            return self.get_shift_graph_simple(top_n, bar_colors, bar_type_space,
-                                               width_scaling, insets, xlabel,
-                                               ylabel, title, xlabel_fontsize,
-                                               ylabel_fontsize, title_fontsize,
-                                               show_plot, tight)
-        else:
-            return self.get_shift_graph_advanced(top_n, bar_colors,
-                                                 bar_type_space, width_scaling,
-                                                 insets, xlabel, ylabel, title,
-                                                 xlabel_fontsize, ylabel_fontsize,
-                                                 title_fontsize, show_plot, tight)
-
-    def get_shift_graph_simple(self, top_n=50, score_colors=('#ffff80','#FDFFD2',
-                                                             '#3377ff', '#C4CAFC',
-                                                             '#9E75B7', '#FECC5D'),
-                               width=6, height=15, width_scaling=1.4,
-                               bar_type_space_scaling=0.05,
-                               inset=True, xlabel=None, ylabel=None, title=None,
-                               xlabel_fontsize=18, ylabel_fontsize=18,
-                               title_fontsize=14, show_plot=True, tight=True):
+    def get_shift_graph(self, top_n=50, width=6, height=15, inset=True,
+                        score_colors=('#ffff80','#FDFFD2','#3377ff', '#C4CAFC',
+                                      '#9E75B7', '#FECC5D'),
+                        width_scaling=1.4, bar_type_space_scaling=0.05,
+                        xlabel=None, ylabel=None, title=None,
+                        xlabel_fontsize=18, ylabel_fontsize=18, title_fontsize=14,
+                        show_plot=True, tight=True):
         # TODO: **kwargs
         """
         Plot the simple shift graph between two systems of types
@@ -429,10 +370,10 @@ class Shift:
         #       the labels, etc)
         if self.type2shift_score is None:
             self.get_shift_scores(details=False)
-        # Sort type scores and take top_n. Reverse for plotting
+        # Get type score components
         type_scores = [(t, self.type2s_diff[t], self.type2p_diff[t],
-                        self.type2s_ref_diff[t], self.type2shift_score[t])\
-                       for t in self.type2s_diff]
+                        self.type2p_avg[t], self.type2s_ref_diff[t],
+                        self.type2shift_score[t]) for t in self.type2s_diff]
         # Reverse sorting to get highest scores, then reverse top n for plotting order
         type_scores = sorted(type_scores, key=lambda x:abs(x[4]), reverse=True)[:top_n]
         type_scores.reverse()
@@ -448,7 +389,7 @@ class Shift:
                        align='center', color=bar_colors, edgecolor=['black']*top_n)
 
         # Get total contribution component bars
-        #+freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
+        # +freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
         total_comp_sums = self.get_shift_component_sums()
         total_comp_sums = [100*s for s in total_comp_sums]
         if total_comp_sums[-1] == 0 and total_comp_sums[-2] == 0:
@@ -538,45 +479,6 @@ class Shift:
         if show_plot:
             plt.show()
         return ax
-
-    def get_shift_graph_advanced(self, top_n=50, bar_colors=('#ffff80','#3377ff'),
-                                 bar_type_space=0.5, width_scaling=1.4,
-                                 xlabel=None, ylabel=None, title=None,
-                                 xlabel_fontsize=18, ylabel_fontsize=18,
-                                 title_fontsize=14, show_plot=True, tight=True):
-        """
-        Plot the advanced shift graph between two systems of types
-
-        Parameters
-        ----------
-        top_n: int
-            display the top_n types as sorted by their absolute contribution to
-            the difference between systems
-        bar_colors: 4-tuple
-            colors to use for bars where first and second entries are the colors
-            for types that have positive and negative relative score differences
-            relatively
-        bar_type_space: float
-            space between the end of each bar and the corresponding label
-        width_scaling: float
-            parameter that controls the width of the x-axis. If types overlap
-            with the y-axis then increase the scaling
-        insets: bool
-            whether to show insets showing the cumulative contribution to the
-            shift by ranked words, and the relative sizes of each system
-        show_plot: bool
-            whether to show plot on finish
-        tight: bool
-            whether to call plt.tight_layout() on the plot
-
-        Returns
-        -------
-        ax
-            matplotlib ax of shift graph. Displays shift graph if show_plot=True
-        """
-        # TODO: implement, can probably make a func that's shared between the
-        # simple and detailed shift that creates the fundamental layout
-        pass
 
 
 # ------------------------------------------------------------------------------
@@ -682,7 +584,7 @@ def _get_shift_type_labels(type_scores):
 
     """
     type_labels = []
-    for (t,s_diff,p_diff,s_ref_diff,total_diff) in type_scores:
+    for (t,s_diff,p_diff,p_avg,s_ref_diff,total_diff) in type_scores:
         type_label = t
         if total_diff < 0:
             if p_diff < 0:
@@ -707,7 +609,7 @@ def _get_shift_type_labels(type_scores):
 
 def _get_bar_colors(type_scores, score_colors):
     bar_colors = []
-    for (_,s_diff,p_diff,s_ref_diff,_) in type_scores:
+    for (_,s_diff,p_diff,p_avg,s_ref_diff,_) in type_scores:
         if s_ref_diff > 0:
             if p_diff > 0:
                 bar_colors.append(score_colors[0])
