@@ -7,9 +7,10 @@ Last updated: June 13th, 2018
 Requires: Python 3
 
 TODO:
-- Define funcs to plot insets to shift graph
-- Define advanced shift graph func / decide what goes in an advanced shift
 - Add funcs to shift class that allow for easy updating of type2freq dicts
+- Make it easy to remove / reset the filter. This will involve having to hold
+  onto stop words, their freqs, and their values (discarded as of now)
+- Make it so you can specify words as stop words instead of just a filter window
 - Clean up class docstrings to fit standards of where things should be described
   (whether it's in init or under class, and listing what funcs are available)
 """
@@ -104,15 +105,12 @@ class Shift:
             self.reference_value = self.get_weighted_score(self.type2freq_1,
                                                            self.type2score_1)
         # Set default score shift values
+        self.diff = None
         self.type2p_diff = None
         self.type2s_diff = None
         self.type2p_avg = None
         self.type2s_ref_diff = None
         self.type2shift_score = None
-
-        # TODO: add functions that allow you to easily update the type2freq dicts
-        # TODO: make it easy to remove/reset filter. Involves having to hold onto
-        #       stop words, their freqs, and their values
 
     def get_types(self, type2freq_1, type2score_1, type2freq_2, type2score_2):
         """
@@ -258,9 +256,11 @@ class Shift:
 
         # Normalize the total shift scores
         if normalize:
-            total_diff = abs(sum(type2shift_score.values()))
-            type2shift_score = {t : shift_score/total_diff for t,shift_score
+            total_diff = sum(type2shift_score.values())
+            self.diff = total_diff
+            type2shift_score = {t : shift_score/abs(total_diff) for t,shift_score
                                 in type2shift_score.items()}
+
 
         # Set results in shift object
         self.type2p_diff = type2p_diff
@@ -387,7 +387,8 @@ class Shift:
         f,ax = plt.subplots(figsize=(width,height))
         ax.margins(y=0.01)
         # Get bar heights
-        heights_comp1, heights_comp2, bottoms, bar_ends = _get_bar_heights(type_scores)
+        heights_comp1, heights_comp2, bottoms, bar_ends = _get_bar_heights(type_scores,
+                                                                           abs(self.diff))
         # Get bar colors
         bar_colors_comp1,bar_colors_comp2 = _get_bar_colors(type_scores, score_colors)
         # Plot the skeleton of the word shift
@@ -634,7 +635,7 @@ def _get_bar_colors(type_scores, score_colors):
             bar_colors_comp2.append(score_colors[5])
     return (bar_colors_comp1, bar_colors_comp2)
 
-def _get_bar_heights(type_scores):
+def _get_bar_heights(type_scores, normalizer):
     """
     tuple: (bar 1 height, bar 2 bottom, bar 2 height)
     """
@@ -643,22 +644,22 @@ def _get_bar_heights(type_scores):
     bottoms = []
     bar_ends = []
     for (_,s_diff,p_diff,p_avg,s_ref_diff,_) in type_scores:
-        heights_comp1.append(100*p_diff*s_ref_diff)
-        heights_comp2.append(100*p_avg*s_diff)
+        heights_comp1.append(100*p_diff*s_ref_diff/normalizer)
+        heights_comp2.append(100*p_avg*s_diff/normalizer)
         # Determine if direction of comp bars are congruent
         if np.sign(s_ref_diff*p_diff)*np.sign(s_diff) == 1:
-            contribution = 100*(p_diff*s_ref_diff+p_avg*s_diff)
+            contribution = 100*(p_diff*s_ref_diff+p_avg*s_diff)/normalizer
             bar_ends.append(contribution)
             if np.sign(s_diff) == 1:
-                bottoms.append(100*p_diff*s_ref_diff)
+                bottoms.append(100*p_diff*s_ref_diff/normalizer)
             else:
-                bottoms.append(contribution)
+                bottoms.append(contribution/normalizer)
         else:
             bottoms.append(0)
             if abs(s_ref_diff*p_diff) > abs(p_avg*s_diff):
-                bar_ends.append(100*s_ref_diff*p_diff)
+                bar_ends.append(100*s_ref_diff*p_diff/normalizer)
             else:
-                bar_ends.append(100*p_avg*s_diff)
+                bar_ends.append(100*p_avg*s_diff/normalizer)
 
     return (heights_comp1, heights_comp2, bottoms, bar_ends)
 
