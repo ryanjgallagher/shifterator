@@ -422,14 +422,14 @@ class Shift:
                                      bar_type_space=bar_type_space,
                                      width_scaling=width_scaling)
         # Make x-axis tick labels bigger
-        for tick in ax.xaxis.get_major_ticks():
-                tick.label.set_fontsize(12)
+        x_ticks = ['{:.1f}'.format(t) for t in ax.get_xticks()]
+        ax.set_xticklabels(x_ticks, fontsize=12, fontname='serif')
 
         # Flip y-axis tick labels and make sure every 5th tick is labeled
         y_ticks = list(range(1,top_n,5))+[top_n]
         y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
         ax.set_yticks(y_ticks)
-        ax.set_yticklabels(y_tick_labels, fontsize=14)
+        ax.set_yticklabels(y_tick_labels, fontsize=14, fontname='serif')
 
         # Add center dividing line
         y_min,y_max = ax.get_ylim()
@@ -450,7 +450,7 @@ class Shift:
             # Plot cumulative diff
             in_ax.semilogy(cum_scores, range(len(cum_scores)), '-o', color='black',
                            linewidth=0.5, markersize=1.0)
-            in_ax.set_xlabel('$\sum_i^r \delta s_{avg,i}$')
+            in_ax.set_xlabel(r'$\sum_i^r \delta s_{avg,i}$'.encode('utf-8'))
             # Set view line
             in_x_min,in_x_max = in_ax.get_xlim()
             in_ax.plot([in_x_min,in_x_max], [top_n,top_n], '-', color='black', linewidth=0.5)
@@ -462,19 +462,20 @@ class Shift:
 
         # Set axis labels and title
         if xlabel is None:
-            xlabel = 'Per type average score shift $\delta s_{avg,r}$ (%)'
-        ax.set_xlabel(xlabel, fontsize=xlabel_fontsize)
+            xlabel = r'Per type average score shift $\delta s_{avg,r}$ (%)'
+        ax.set_xlabel(xlabel, fontsize=xlabel_fontsize, fontname='serif')
         if ylabel is None:
-            ylabel = 'Type rank $r$'
-        ax.set_ylabel(ylabel, fontsize=ylabel_fontsize)
+            ylabel = r'Type rank $r$'
+        ax.set_ylabel(ylabel, fontsize=ylabel_fontsize, fontname='serif')
         if title is None:
             s_avg_1 = self.get_weighted_score(self.type2freq_1,self.type2score_1)
             s_avg_2 = self.get_weighted_score(self.type2freq_2,self.type2score_2)
-            title = '$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(1)}=$'+'{0:.2f}'\
+            title = r'$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(1)}=$'+'{0:.2f}'\
                     .format(s_avg_1)+'\n'\
-                    +'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(2)}=$'+'{0:.2f}'\
+                    +r'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(2)}=$'+'{0:.2f}'\
                     .format(s_avg_2)
-        ax.set_title(title, fontsize=14)
+            title = title
+        ax.set_title(title, fontsize=14, fontname='serif')
 
         # Show and return plot
         if tight:
@@ -675,7 +676,7 @@ def _set_bar_labels(ax, bar_ends, type_labels, bar_type_space=1.4):
             ha='left'
             space = bar_type_space
         t = ax.text(width+space, bar_n+1, type_labels[bar_n],
-                    ha=ha, va='center',fontsize=13)
+                    ha=ha, va='center',fontsize=13, fontname='serif')
         text_objs.append(t)
     return (ax, text_objs)
 
