@@ -338,7 +338,7 @@ class Shift:
                         width_scaling=1.4, bar_type_space_scaling=0.0175,
                         xlabel=None, ylabel=None, title=None,
                         xlabel_fontsize=18, ylabel_fontsize=18, title_fontsize=14,
-                        show_plot=True, tight=True):
+                        show_plot=True, tight=True, filename=None):
         # TODO: **kwargs
         """
         Plot the simple shift graph between two systems of types
@@ -380,7 +380,8 @@ class Shift:
                         self.type2p_avg[t], self.type2s_ref_diff[t],
                         self.type2shift_score[t]) for t in self.type2s_diff]
         # Reverse sorting to get highest scores, then reverse top n for plotting order
-        type_scores = sorted(type_scores, key=lambda x:abs(x[-1]), reverse=True)[:top_n]
+        type_scores = sorted(type_scores, key=lambda x:abs(x[-1]),
+                             reverse=True)[:top_n]
         type_scores.reverse()
 
         # Plot scores, height:width ratio = 2.5:1
@@ -392,10 +393,12 @@ class Shift:
         # Get bar colors
         bar_colors_comp1,bar_colors_comp2 = _get_bar_colors(type_scores, score_colors)
         # Plot the skeleton of the word shift
-        ax.barh(range(1,len(type_scores)+1), heights_comp1, 0.8, linewidth=1,
-                       align='center', color=bar_colors_comp1, edgecolor=['black']*top_n)
+        ax.barh(range(1,len(type_scores)+1), heights_comp1, 0.8,
+                       align='center', color=bar_colors_comp1,
+                       linewidth=0.25, edgecolor=['black']*top_n)
         ax.barh(range(1, len(type_scores)+1), heights_comp2, 0.8, left=bottoms,
-                       linewidth=1, align='center', color=bar_colors_comp2, edgecolor=['black']*top_n)
+                      align='center', color=bar_colors_comp2,
+                      linewidth=0.25, edgecolor=['black']*top_n)
 
         # Get total contribution component bars
         # +freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
@@ -406,7 +409,7 @@ class Shift:
         ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5,top_n+6.5,top_n+6.5]
         comp_colors = ['#707070', score_colors[5], score_colors[4], score_colors[3],
                        score_colors[2], score_colors[1], score_colors[0]]
-        ax.barh(ys, comp_bars, 0.8, linewidth=1, align='center',
+        ax.barh(ys, comp_bars, 0.8, linewidth=0.25, align='center',
                 color=comp_colors, edgecolor=['black']*len(comp_bars))
         # TODO: add symbols to ends of component bars
 
@@ -417,8 +420,16 @@ class Shift:
         #type_labels = _get_shift_type_labels(type_scores)
         type_labels = [t for (t,_,_,_,_,_) in type_scores]
         # Add word labels to bars
-        symbols = [r'$\Sigma$', 'down', 'up', u'-\u2193', u'-\u2191',
+        symbols = [r'$\Sigma$', u'\u25BD', u'\u25B3', u'-\u2193', u'-\u2191',
                    u'+\u2193', u'+\u2191']
+        # TODO: Hack for making sure symbols end up on correct side. Better way?
+        if comp_bars[1] == 0:
+            comp_bars[1] = -0.0000001
+        if comp_bars[3] == 0:
+            comp_bars[3] = -0.0000001
+        if comp_bars[5] == 0:
+            comp_bars[5] = -0.0000001
+
         ax,text_objs = _set_bar_labels(ax, bar_ends+comp_bars,
                                        list(range(1, len(type_scores)+1))+ys,
                                        type_labels+symbols,
@@ -445,8 +456,10 @@ class Shift:
         ax.plot([0,0],[1,y_max], '-', color='black', linewidth=0.7)
         # Add dividing line between words and component bars
         x_min,x_max = ax.get_xlim()
-        ax.plot([x_min,x_max], [top_n+1,top_n+1], '-', color='black', linewidth=0.7)
-        ax.plot([x_min,x_max], [top_n+2.75, top_n+2.75], '-', color='black', linewidth=0.5)
+        ax.plot([x_min,x_max], [top_n+1,top_n+1], '-', color='black',
+                 linewidth=0.7)
+        ax.plot([x_min,x_max], [top_n+2.75, top_n+2.75], '-', color='black',
+                linewidth=0.5)
 
         if inset:
             # Get cumulative diff
@@ -462,7 +475,8 @@ class Shift:
             in_ax.set_xlabel(r'$\sum_i^r \delta s_{avg,i}$')
             # Set view line
             in_x_min,in_x_max = in_ax.get_xlim()
-            in_ax.plot([in_x_min,in_x_max], [top_n,top_n], '-', color='black', linewidth=0.5)
+            in_ax.plot([in_x_min,in_x_max], [top_n,top_n], '-', color='black',
+                       linewidth=0.5)
             # Clean up axes
             in_y_min,in_y_max = in_ax.get_ylim()
             in_ax.set_ylim((in_y_max, in_y_min))
@@ -489,6 +503,8 @@ class Shift:
         # Show and return plot
         if tight:
             plt.tight_layout()
+        if filename is not None:
+            plt.savefig(filename)
         if show_plot:
             plt.show()
         return ax
@@ -513,7 +529,8 @@ def filter_by_scores(type2freq, type2score, stop_lens):
     Returns
     -------
     type2freq_new,type2score_new: dict,dict
-        Frequency and score dicts filtered of words whose score fall within stop window
+        Frequency and score dicts filtered of words whose score fall within stop
+        window
     """
     type2freq_new = dict()
     type2score_new = dict()
@@ -707,7 +724,8 @@ def _adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs,
     comp_bars = [abs(b) for b in comp_bars]
     lengths += comp_bars
     # Get max length
-    max_length = width_scaling*abs(sorted(lengths, key=lambda x: abs(x), reverse=True)[0])
+    max_length = width_scaling*abs(sorted(lengths, key=lambda x: abs(x),
+                                          reverse=True)[0])
     # Symmetrize the axis around that max length
     ax.set_xlim((-1*max_length, max_length))
     return ax
