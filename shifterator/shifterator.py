@@ -335,7 +335,7 @@ class Shift:
     def get_shift_graph(self, top_n=50, width=6, height=15, inset=True,
                         score_colors=('#ffff80','#FDFFD2','#3377ff', '#C4CAFC',
                                       '#9E75B7', '#FECC5D'),
-                        width_scaling=1.4, bar_type_space_scaling=0.05,
+                        width_scaling=1.4, bar_type_space_scaling=0.0175,
                         xlabel=None, ylabel=None, title=None,
                         xlabel_fontsize=18, ylabel_fontsize=18, title_fontsize=14,
                         show_plot=True, tight=True):
@@ -400,23 +400,32 @@ class Shift:
         # Get total contribution component bars
         # +freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
         total_comp_sums = self.get_shift_component_sums()
-        total_comp_sums = [100*s for s in total_comp_sums]
+        comp_bars = [sum(total_comp_sums)] + list(reversed(total_comp_sums))
+        comp_scaling = abs(bar_ends[-1])/abs(comp_bars[0])
+        comp_bars = [comp_scaling*s for s in comp_bars]
         ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5,top_n+6.5,top_n+6.5]
         comp_colors = ['#707070', score_colors[5], score_colors[4], score_colors[3],
                        score_colors[2], score_colors[1], score_colors[0]]
-        comp_bars = [sum(total_comp_sums)] + list(reversed(total_comp_sums))
         ax.barh(ys, comp_bars, 0.8, linewidth=1, align='center',
-                            color=comp_colors, edgecolor=['black']*top_n)
+                color=comp_colors, edgecolor=['black']*len(comp_bars))
         # TODO: add symbols to ends of component bars
 
         # Estimate bar_type_space as a fraction of largest xlim
         x_width = 2*abs(max(ax.get_xlim(), key=lambda x: abs(x)))
         bar_type_space = bar_type_space_scaling*x_width
         # Format word labels with up/down arrows and +/-
-        type_labels = _get_shift_type_labels(type_scores)
+        #type_labels = _get_shift_type_labels(type_scores)
+        type_labels = [t for (t,_,_,_,_,_) in type_scores]
         # Add word labels to bars
-        ax,text_objs = _set_bar_labels(ax, bar_ends, type_labels,
+        symbols = [r'$\Sigma$', 'down', 'up', u'-\u2193', u'-\u2191',
+                   u'+\u2193', u'+\u2191']
+        ax,text_objs = _set_bar_labels(ax, bar_ends+comp_bars,
+                                       list(range(1, len(type_scores)+1))+ys,
+                                       type_labels+symbols,
                                        bar_type_space=bar_type_space)
+        # Add symbol labels to comp bars
+        #ax,text_objs_comp = _set_bar_labels(ax, comp_bars, symbols,
+        #                                    bar_type_space=bar_type_space)
         # Adjust for width of word labels and make x-axis symmetric
         ax = _adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs,
                                      bar_type_space=bar_type_space,
@@ -450,7 +459,7 @@ class Shift:
             # Plot cumulative diff
             in_ax.semilogy(cum_scores, range(len(cum_scores)), '-o', color='black',
                            linewidth=0.5, markersize=1.0)
-            in_ax.set_xlabel(r'$\sum_i^r \delta s_{avg,i}$'.encode('utf-8'))
+            in_ax.set_xlabel(r'$\sum_i^r \delta s_{avg,i}$')
             # Set view line
             in_x_min,in_x_max = in_ax.get_xlim()
             in_ax.plot([in_x_min,in_x_max], [top_n,top_n], '-', color='black', linewidth=0.5)
@@ -651,10 +660,11 @@ def _get_bar_heights(type_scores, normalizer):
         if np.sign(s_ref_diff*p_diff)*np.sign(s_diff) == 1:
             contribution = 100*(p_diff*s_ref_diff+p_avg*s_diff)/normalizer
             bar_ends.append(contribution)
-            if np.sign(s_diff) == 1:
-                bottoms.append(100*p_diff*s_ref_diff/normalizer)
-            else:
-                bottoms.append(contribution/normalizer)
+            bottoms.append(100*p_diff*s_ref_diff/normalizer)
+            #if np.sign(s_diff) == 1:
+            #    bottoms.append(100*p_diff*s_ref_diff/normalizer)
+            #else:
+            #    bottoms.append(contribution/normalizer)
         else:
             bottoms.append(0)
             if abs(s_ref_diff*p_diff) > abs(p_avg*s_diff):
@@ -664,10 +674,10 @@ def _get_bar_heights(type_scores, normalizer):
 
     return (heights_comp1, heights_comp2, bottoms, bar_ends)
 
-def _set_bar_labels(ax, bar_ends, type_labels, bar_type_space=1.4):
+def _set_bar_labels(ax, bar_ends, bar_heights, type_labels, bar_type_space=0.02):
     text_objs = []
     for bar_n,height in enumerate(range(len(bar_ends))):
-        #height = bar.get_height()
+        height = bar_heights[bar_n]
         width = bar_ends[bar_n]
         if bar_ends[bar_n] < 0:
             ha='right'
@@ -675,7 +685,7 @@ def _set_bar_labels(ax, bar_ends, type_labels, bar_type_space=1.4):
         else:
             ha='left'
             space = bar_type_space
-        t = ax.text(width+space, bar_n+1, type_labels[bar_n],
+        t = ax.text(width+space, height, type_labels[bar_n],
                     ha=ha, va='center',fontsize=13, fontname='serif')
         text_objs.append(t)
     return (ax, text_objs)
