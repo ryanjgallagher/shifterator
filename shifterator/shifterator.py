@@ -91,13 +91,13 @@ class Shift:
         # Filter type dictionaries by stop lense
         self.stop_lens = stop_lens
         if stop_lens is not None:
-            self.type2freq_1,self.type2score_1,stop_words = filter_by_scores(self.type2freq_1,
-                                                                             self.type2score_1,
-                                                                             stop_lens)
-            self.type2freq_2,self.type2score_2,stop_words = filter_by_scores(self.type2freq_2,
-                                                                             self.type2score_2,
-                                                                             stop_lens)
-            self.stop_words = stop_words
+            self.type2freq_1,self.type2score_1,sw_1 = filter_by_scores(self.type2freq_1,
+                                                                       self.type2score_1,
+                                                                       stop_lens)
+            self.type2freq_2,self.type2score_2,sw_2 = filter_by_scores(self.type2freq_2,
+                                                                       self.type2score_2,
+                                                                       stop_lens)
+            self.stop_words = sw_1.union(sw_2)
         # Set reference value
         if reference_value is not None:
             self.reference_value = reference_value
@@ -299,7 +299,7 @@ class Shift:
                                                  normalize=normalize,
                                                  details=True)
         else:
-            shift_scores = [(t, self.type2s_diff[t], self.type2p_diff[t],
+            shift_scores = [(t, self.type2p_diff[t], self.type2s_diff[t],
                              self.type2p_avg[t], self.type2s_ref_diff[t],
                              self.type2shift_score[t]) for t in self.type2s_diff]
 
@@ -310,7 +310,7 @@ class Shift:
         neg_freq_neg_score = 0
         pos_s_diff = 0
         neg_s_diff = 0
-        for t,s_diff,p_diff,p_avg,s_ref_diff, _ in shift_scores:
+        for t,p_diff,s_diff,p_avg,s_ref_diff, _ in shift_scores:
             # Get contribution of p_diff*s_ref_diff term
             if p_diff > 0:
                 if s_ref_diff > 0:
@@ -376,7 +376,7 @@ class Shift:
         if self.type2shift_score is None:
             self.get_shift_scores(details=False)
         # Get type score components
-        type_scores = [(t, self.type2s_diff[t], self.type2p_diff[t],
+        type_scores = [(t, self.type2p_diff[t], self.type2s_diff[t],
                         self.type2p_avg[t], self.type2s_ref_diff[t],
                         self.type2shift_score[t]) for t in self.type2s_diff]
         # Reverse sorting to get highest scores, then reverse top n for plotting order
@@ -411,7 +411,6 @@ class Shift:
                        score_colors[2], score_colors[1], score_colors[0]]
         ax.barh(ys, comp_bars, 0.8, linewidth=0.25, align='center',
                 color=comp_colors, edgecolor=['black']*len(comp_bars))
-        # TODO: add symbols to ends of component bars
 
         # Estimate bar_type_space as a fraction of largest xlim
         x_width = 2*abs(max(ax.get_xlim(), key=lambda x: abs(x)))
@@ -430,13 +429,12 @@ class Shift:
         if comp_bars[5] == 0:
             comp_bars[5] = -0.0000001
 
+        # Add labels to bars
         ax,text_objs = _set_bar_labels(ax, bar_ends+comp_bars,
                                        list(range(1, len(type_scores)+1))+ys,
                                        type_labels+symbols,
                                        bar_type_space=bar_type_space)
-        # Add symbol labels to comp bars
-        #ax,text_objs_comp = _set_bar_labels(ax, comp_bars, symbols,
-        #                                    bar_type_space=bar_type_space)
+
         # Adjust for width of word labels and make x-axis symmetric
         ax = _adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs,
                                      bar_type_space=bar_type_space,
@@ -614,7 +612,7 @@ def _get_shift_type_labels(type_scores):
 
     """
     type_labels = []
-    for (t,s_diff,p_diff,p_avg,s_ref_diff,total_diff) in type_scores:
+    for (t,p_diff,s_diff,p_avg,s_ref_diff,total_diff) in type_scores:
         type_label = t
         if total_diff < 0:
             if p_diff < 0:
@@ -670,7 +668,7 @@ def _get_bar_heights(type_scores, normalizer):
     heights_comp2 = []
     bottoms = []
     bar_ends = []
-    for (_,s_diff,p_diff,p_avg,s_ref_diff,_) in type_scores:
+    for (_,p_diff,s_diff,p_avg,s_ref_diff,_) in type_scores:
         heights_comp1.append(100*p_diff*s_ref_diff/normalizer)
         heights_comp2.append(100*p_avg*s_diff/normalizer)
         # Determine if direction of comp bars are congruent
@@ -678,10 +676,6 @@ def _get_bar_heights(type_scores, normalizer):
             contribution = 100*(p_diff*s_ref_diff+p_avg*s_diff)/normalizer
             bar_ends.append(contribution)
             bottoms.append(100*p_diff*s_ref_diff/normalizer)
-            #if np.sign(s_diff) == 1:
-            #    bottoms.append(100*p_diff*s_ref_diff/normalizer)
-            #else:
-            #    bottoms.append(contribution/normalizer)
         else:
             bottoms.append(0)
             if abs(s_ref_diff*p_diff) > abs(p_avg*s_diff):
