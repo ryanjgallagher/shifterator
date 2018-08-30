@@ -339,7 +339,7 @@ class Shift:
                         score_colors=('#ffff80','#FDFFD2','#3377ff', '#C4CAFC',
                                       '#9E75B7', '#FECC5D'),
                         width_scaling=1.2, bar_type_space_scaling=0.015,
-                        xlabel=None, ylabel=None, title=None, fontname='serif',
+                        xlabel=None, ylabel=None, title=None,
                         xlabel_fontsize=20, ylabel_fontsize=20, title_fontsize=18,
                         inset_pos_cumulative=[0.19, 0.12, 0.175, 0.175],
                         inset_pos_text_size=[0.81, 0.12, 0.08, 0.08],
@@ -444,8 +444,7 @@ class Shift:
         ax,text_objs = _set_bar_labels(ax, bar_ends+comp_bars,
                                        list(range(1, len(type_scores)+1))+ys,
                                        type_labels+symbols,
-                                       bar_type_space=bar_type_space,
-                                       fontname=fontname)
+                                       bar_type_space=bar_type_space)
 
         # Adjust for width of word labels and make x-axis symmetric
         ax = _adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs,
@@ -453,13 +452,13 @@ class Shift:
                                      width_scaling=width_scaling)
         # Make x-axis tick labels bigger
         x_ticks = ['{:.1f}'.format(t) for t in ax.get_xticks()]
-        ax.set_xticklabels(x_ticks, fontsize=14, fontname='serif')
+        ax.set_xticklabels(x_ticks, fontsize=14)
 
         # Flip y-axis tick labels and make sure every 5th tick is labeled
         y_ticks = list(range(1,top_n,5))+[top_n]
         y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
         ax.set_yticks(y_ticks)
-        ax.set_yticklabels(y_tick_labels, fontsize=14, fontname='serif')
+        ax.set_yticklabels(y_tick_labels, fontsize=14)
 
         # Add center dividing line
         y_min,y_max = ax.get_ylim()
@@ -482,10 +481,10 @@ class Shift:
         # Set axis labels and title
         if xlabel is None:
             xlabel = r'Per type average score shift $\delta s_{avg,r}$ (%)'
-        ax.set_xlabel(xlabel, fontsize=xlabel_fontsize, fontname='serif')
+        ax.set_xlabel(xlabel, fontsize=xlabel_fontsize)
         if ylabel is None:
             ylabel = r'Type rank $r$'
-        ax.set_ylabel(ylabel, fontsize=ylabel_fontsize, fontname='serif')
+        ax.set_ylabel(ylabel, fontsize=ylabel_fontsize)
         if title is None:
             s_avg_1 = self.get_weighted_score(self.type2freq_1,self.type2score_1)
             s_avg_2 = self.get_weighted_score(self.type2freq_2,self.type2score_2)
@@ -494,7 +493,7 @@ class Shift:
                     +r'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(2)}=$'+'{0:.2f}'\
                     .format(s_avg_2)
             title = title
-        ax.set_title(title, fontsize=title_fontsize, fontname='serif')
+        ax.set_title(title, fontsize=title_fontsize)
 
         # Show and return plot
         if tight:
@@ -685,8 +684,7 @@ def _get_bar_heights(type_scores, normalizer):
 
     return (heights_comp1, heights_comp2, bottoms, bar_ends)
 
-def _set_bar_labels(ax, bar_ends, bar_heights, type_labels, bar_type_space=0.02,
-                    fontname='serif'):
+def _set_bar_labels(ax, bar_ends, bar_heights, type_labels, bar_type_space=0.02):
     text_objs = []
     for bar_n,height in enumerate(range(len(bar_ends))):
         height = bar_heights[bar_n]
@@ -698,7 +696,7 @@ def _set_bar_labels(ax, bar_ends, bar_heights, type_labels, bar_type_space=0.02,
             ha='left'
             space = bar_type_space
         t = ax.text(width+space, height, type_labels[bar_n],
-                    ha=ha, va='center',fontsize=13, fontname=fontname)
+                    ha=ha, va='center',fontsize=13)
         text_objs.append(t)
     return (ax, text_objs)
 
@@ -751,12 +749,8 @@ def get_cumulative_inset(f, type2shift_score, top_n,
     for ticks in [in_ax.xaxis.get_major_ticks(), in_ax.yaxis.get_major_ticks()]:
         for tick in ticks:
             tick.label.set_fontsize(12)
-            tick.label.set_fontname('serif')
     # Set labels
-    in_ax.set_xlabel('$\sum^r \delta \Phi_{\\tau}(T^{(1)}, T^{(2)})$',
-                     fontsize=12, fontname='serif')
-    # \u03c4
-    #in_ax.set_ylabel('Rank $r$', fontsize=10, fontname='serif')
+    in_ax.set_xlabel('$\sum^r \delta \Phi_{\\tau}(T^{(1)}, T^{(2)})$', fontsize=12)
     # Make background transparent
     in_ax.patch.set_alpha(0)
 
@@ -779,11 +773,9 @@ def get_text_size_inset(f, type2freq_1, type2freq_2, system_names=['Sys. 1', 'Sy
     # Rescale to make the bars appear to be more thin
     in_ax.set_ylim((0, 1))
     # Set title and label properties
-    in_ax.text(0.5, 0.75, 'Text Size:', horizontalalignment='center',
-               fontsize=14, fontname='serif')
+    in_ax.text(0.5, 0.75, 'Text Size:', horizontalalignment='center', fontsize=14)
     for tick in in_ax.yaxis.get_major_ticks():
         tick.label.set_fontsize(12)
-        tick.label.set_fontname('serif')
     in_ax.tick_params(axis='y', length=0)
     # Turn off axes and make transparent
     for side in ['left', 'right', 'top', 'bottom']:
