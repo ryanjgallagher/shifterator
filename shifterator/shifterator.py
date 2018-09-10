@@ -3,7 +3,6 @@
 shifterator.py
 
 Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-Last updated: June 13th, 2018
 
 Requires: Python 3
 
@@ -12,6 +11,9 @@ TODO:
 - Make it easy to remove / reset the filter. This will involve having to hold
   onto stop words, their freqs, and their values (discarded as of now)
 - Make it so you can specify words as stop words instead of just a filter window
+- Add fade on bars to indicate canceling out in different directions
+- Add symbol when a type is borrowing a score from the other system
+- Properly handle types without scores
 - Clean up class docstrings to fit standards of where things should be described
   (whether it's in init or under class, and listing what funcs are available)
 """
@@ -383,9 +385,6 @@ class Shift:
         #       options, so it's all in the same place and sets those params once
         # Set font
         if serif:
-            # TODO: figure out how to use latex and properly render triangles
-            #rcParams['text.usetex'] = True
-            #rcParams['text.latex.unicode'] = True
             rcParams['font.family'] = 'serif'
             rcParams['mathtext.fontset'] = 'dejavuserif'
         # Get type score components
@@ -434,7 +433,6 @@ class Shift:
         # Add word labels to bars
         symbols = [r'$\Sigma$', u'\u25BD', u'\u25B3', u'-\u2193', u'-\u2191',
                    u'+\u2193', u'+\u2191']
-        #symbols = [s.encode('utf-8') for s in symbols]
         # TODO: Hack for making sure symbols end up on correct side. Better way?
         for i in [1, 3, 5]:
             if comp_bars[i] == 0:
