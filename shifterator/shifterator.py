@@ -379,6 +379,7 @@ class Shift:
             matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
         # TODO: **kwargs
+        # TODO: rename variables so it's all less verbose
         # TODO: wrap the parts into functions (basic bars, contributions, handling
         #       the labels, etc)
         # TODO: make a func that does all the checks and setting for plotting
@@ -402,17 +403,25 @@ class Shift:
         f,ax = plt.subplots(figsize=(width,height))
         ax.margins(y=0.005)
         # Get bar heights
-        heights_comp1, heights_comp2, bottoms, bar_ends = _get_bar_heights(type_scores,
-                                                                           abs(self.diff))
+        heights_comp1, heights_comp2, heights_alpha, heights_subtract, bottoms, bottoms_alpha, bar_ends = _get_bar_heights(type_scores, abs(self.diff))
         # Get bar colors
         bar_colors_comp1,bar_colors_comp2 = _get_bar_colors(type_scores, score_colors)
-        # Plot the skeleton of the word shift
-        ax.barh(range(1,len(type_scores)+1), heights_comp1, 0.8,
-                       align='center', color=bar_colors_comp1,
-                       linewidth=0.25, edgecolor=['black']*top_n)
-        ax.barh(range(1, len(type_scores)+1), heights_comp2, 0.8, left=bottoms,
-                      align='center', color=bar_colors_comp2,
-                      linewidth=0.25, edgecolor=['black']*top_n)
+        bar_colors_alpha, bar_colors_subtract = _get_bar_alpha_colors(heights_comp1, heights_comp2,
+                                                                      heights_alpha, bar_colors_comp1,
+                                                                      bar_colors_comp2)
+        # Plot the contributions for the word shift
+        ys = range(1,len(type_scores)+1)
+        ax.barh(ys, heights_comp1, 0.8, align='center', color=bar_colors_comp1,
+                linewidth=0.25, edgecolor=['black']*top_n)
+        ax.barh(ys, heights_comp2, 0.8, left=bottoms, align='center',
+                color=bar_colors_comp2, linewidth=0.25, edgecolor=['black']*top_n)
+        # Plot the counteracting components as faded bar charts
+        ax.barh(ys, heights_alpha, 0.8, left=bottoms_alpha, align='center',
+                color=bar_colors_alpha, alpha=0.35, linewidth=0.25,
+                edgecolor=['black']*top_n)
+        ax.barh(ys, heights_subtract, 0.8, left=bottoms, align='center',
+                color=bar_colors_subtract, alpha=0.35, linewidth=0.25,
+                edgecolor=['black']*top_n)
 
         # Get total contribution component bars
         # +freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
@@ -503,7 +512,6 @@ class Shift:
         if show_plot:
             plt.show()
         return ax
-
 
 # ------------------------------------------------------------------------------
 # ------------------------------ HELPER FUNCTIONS ------------------------------
@@ -661,26 +669,57 @@ def _get_bar_heights(type_scores, normalizer):
     """
     tuple: (bar 1 height, bar 2 bottom, bar 2 height)
     """
+    # TODO: return a dictionary to save on text?
     heights_comp1 = []
     heights_comp2 = []
+    heights_alpha = []
+    heights_subtract = []
     bottoms = []
+    bottoms_alpha = []
     bar_ends = []
     for (_,p_diff,s_diff,p_avg,s_ref_diff,_) in type_scores:
-        heights_comp1.append(100*p_diff*s_ref_diff/normalizer)
-        heights_comp2.append(100*p_avg*s_diff/normalizer)
+        comp1 = 100*p_diff*s_ref_diff/normalizer
+        comp2 = 100*p_avg*s_diff/normalizer
         # Determine if direction of comp bars are congruent
         if np.sign(s_ref_diff*p_diff)*np.sign(s_diff) == 1:
-            contribution = 100*(p_diff*s_ref_diff+p_avg*s_diff)/normalizer
-            bar_ends.append(contribution)
-            bottoms.append(100*p_diff*s_ref_diff/normalizer)
+            heights_comp1.append(comp1)
+            heights_comp2.append(comp2)
+            heights_alpha.append(0)
+            heights_subtract.append(0)
+            bar_ends.append(comp1+comp2)
+            bottoms.append(comp1)
+            bottoms_alpha.append(0)
         else:
+            total_comp = comp1+comp2
             bottoms.append(0)
-            if abs(s_ref_diff*p_diff) > abs(p_avg*s_diff):
-                bar_ends.append(100*s_ref_diff*p_diff/normalizer)
+            bottoms_alpha.append(total_comp)
+            if abs(comp1) > abs(comp2):
+                heights_comp1.append(total_comp)
+                heights_comp2.append(0)
+                heights_subtract.append(comp2)
+                heights_alpha.append(comp1-total_comp)
+                bar_ends.append(comp1)
             else:
-                bar_ends.append(100*p_avg*s_diff/normalizer)
+                heights_comp1.append(0)
+                heights_comp2.append(total_comp)
+                heights_subtract.append(comp1)
+                heights_alpha.append(comp2-total_comp)
+                bar_ends.append(comp2)
+    return (heights_comp1, heights_comp2, heights_alpha, heights_subtract,
+            bottoms, bottoms_alpha, bar_ends)
 
-    return (heights_comp1, heights_comp2, bottoms, bar_ends)
+def _get_bar_alpha_colors(heights_comp1, heights_comp2, heights_alpha,
+                          bar_colors_comp1, bar_colors_comp2):
+    bar_colors_alpha = []
+    bar_colors_subtract = []
+    for n in range(len(heights_comp1)):
+        if abs(heights_alpha[n]+heights_comp1[n]) > abs(heights_comp2[n]):
+            bar_colors_alpha.append(bar_colors_comp1[n])
+            bar_colors_subtract.append(bar_colors_comp2[n])
+        else:
+            bar_colors_alpha.append(bar_colors_comp2[n])
+            bar_colors_subtract.append(bar_colors_comp1[n])
+    return (bar_colors_alpha, bar_colors_subtract)
 
 def _set_bar_labels(ax, bar_ends, bar_heights, type_labels, bar_type_space=0.02):
     text_objs = []
