@@ -338,7 +338,7 @@ class Shift:
                 pos_s_diff, neg_s_diff)
 
     def get_shift_graph(self, top_n=50, width=7, height=15, insets=True,
-                        score_colors=('#ffff80','#FDFFD2','#3377ff', '#C4CAFC',
+                        score_colors=('#ffff80','#FDFFD2','#2f7cce', '#C4CAFC',
                                       '#9E75B7', '#FECC5D'),
                         width_scaling=1.2, bar_type_space_scaling=0.015,
                         xlabel=None, ylabel=None, title=None,
@@ -347,7 +347,6 @@ class Shift:
                         inset_pos_text_size=[0.81, 0.12, 0.08, 0.08],
                         system_names=['Sys. 1', 'Sys. 2'],
                         show_plot=True, tight=True, serif=True, filename=None):
-        # TODO: **kwargs
         """
         Plot the simple shift graph between two systems of types
 
@@ -379,6 +378,7 @@ class Shift:
         ax
             matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
+        # TODO: **kwargs
         # TODO: wrap the parts into functions (basic bars, contributions, handling
         #       the labels, etc)
         # TODO: make a func that does all the checks and setting for plotting
@@ -418,7 +418,7 @@ class Shift:
         # +freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
         total_comp_sums = self.get_shift_component_sums()
         comp_bars = [sum(total_comp_sums)] + list(reversed(total_comp_sums))
-        comp_scaling = abs(bar_ends[-1])/abs(comp_bars[0])
+        comp_scaling = abs(bar_ends[np.argmax(bar_ends)]/abs(comp_bars[np.argmax(comp_bars)]))
         comp_bars = [comp_scaling*s for s in comp_bars]
         ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5,top_n+6.5,top_n+6.5]
         comp_colors = ['#707070'] + list(reversed(score_colors))
@@ -740,6 +740,13 @@ def get_cumulative_inset(f, type2shift_score, top_n,
     # Reverse the y-axis
     y_min,y_max = in_ax.get_ylim()
     in_ax.set_ylim((y_max, y_min))
+    # Set x-axis limits
+    total_score = cum_scores[-1]
+    x_min,x_max = in_ax.get_xlim()
+    if np.sign(total_score) == -1:
+        in_ax.set_xlim((x_min, 0))
+    else:
+        in_ax.set_xlim((0, x_max))
     # Plot top_n line
     x_min,x_max = in_ax.get_xlim()
     in_ax.plot([x_min,x_max], [top_n,top_n], '-', color='black', linewidth=0.5)
