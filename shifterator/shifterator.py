@@ -11,7 +11,6 @@ TODO:
 - Make it easy to remove / reset the filter. This will involve having to hold
   onto stop words, their freqs, and their values (discarded as of now)
 - Make it so you can specify words as stop words instead of just a filter window
-- Add fade on bars to indicate canceling out in different directions
 - Add symbol when a type is borrowing a score from the other system
 - Properly handle types without scores
 - Clean up class docstrings to fit standards of where things should be described
@@ -23,6 +22,7 @@ import sys
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
+from plotting import *
 from matplotlib import rc
 from matplotlib import rcParams
 from collections import Counter
@@ -260,9 +260,9 @@ class Shift:
                                 for t in types if t in types}
 
         # Normalize the total shift scores
+        total_diff = sum(type2shift_score.values())
+        self.diff = total_diff
         if normalize:
-            total_diff = sum(type2shift_score.values())
-            self.diff = total_diff
             type2shift_score = {t : shift_score/abs(total_diff) for t,shift_score
                                 in type2shift_score.items()}
 
@@ -337,16 +337,8 @@ class Shift:
                 neg_freq_pos_score, neg_freq_neg_score,
                 pos_s_diff, neg_s_diff)
 
-    def get_shift_graph(self, top_n=50, width=7, height=15, insets=True,
-                        score_colors=('#ffff80','#FDFFD2','#2f7cce', '#C4CAFC',
-                                      '#9E75B7', '#FECC5D'),
-                        width_scaling=1.2, bar_type_space_scaling=0.015,
-                        xlabel=None, ylabel=None, title=None,
-                        xlabel_fontsize=20, ylabel_fontsize=20, title_fontsize=18,
-                        inset_pos_cumulative=[0.19, 0.12, 0.175, 0.175],
-                        inset_pos_text_size=[0.81, 0.12, 0.08, 0.08],
-                        system_names=['Sys. 1', 'Sys. 2'],
-                        show_plot=True, tight=True, serif=True, filename=None):
+    def get_shift_graph(self, top_n=50, text_size_inset=True, cumulative_inset=True,
+                        show_plot=True, filename=None, **kwargs):
         """
         Plot the simple shift graph between two systems of types
 
@@ -355,117 +347,54 @@ class Shift:
         top_n: int
             display the top_n types as sorted by their absolute contribution to
             the difference between systems
-        bar_colors: 4-tuple
-            colors to use for bars where first and second entries are the colors
-            for types that have positive and negative relative score differences
-            relatively
-        bar_type_space_scaling: float
-            parameter between 0 and 1 that controls the space between the end of
-            each bar and its text label. Increase if more space is desired
-        width_scaling: float
-            parameter between 0 and 1 that controls the width of the x-axis.
-            If types overlap with the y-axis then increase the scaling
-        insets: bool
+        cumulative_inset, text_size_inset: bool
             whether to show insets showing the cumulative contribution to the
-            shift by ranked words, and the relative sizes of each system
+            shift by ranked types, and the relative sizes of each system
         show_plot: bool
             whether to show plot on finish
-        tight: bool
-            whether to call plt.tight_layout() on the plot
 
         Returns
         -------
         ax
             matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
-        # TODO: **kwargs
-        # TODO: rename variables so it's all less verbose
-        # TODO: wrap the parts into functions (basic bars, contributions, handling
-        #       the labels, etc)
-        # TODO: make a func that does all the checks and setting for plotting
-        #       options, so it's all in the same place and sets those params once
-        # Set font
-        if serif:
-            rcParams['font.family'] = 'serif'
-            rcParams['mathtext.fontset'] = 'dejavuserif'
+        # Set plotting parameters
+        kwargs = get_plotting_params(kwargs)
+
         # Get type score components
         if self.type2shift_score is None:
             self.get_shift_scores(details=False)
         type_scores = [(t, self.type2p_diff[t], self.type2s_diff[t],
                         self.type2p_avg[t], self.type2s_ref_diff[t],
                         self.type2shift_score[t]) for t in self.type2s_diff]
-        # Reverse sorting to get highest scores, then reverse top n for plotting order
+        # Reverse sorting to get highest scores, then reverse top n for plotting
         type_scores = sorted(type_scores, key=lambda x:abs(x[-1]),
                              reverse=True)[:top_n]
         type_scores.reverse()
 
-        # Plot scores, height:width ratio = 2.5:1
-        f,ax = plt.subplots(figsize=(width,height))
-        ax.margins(y=0.005)
-        # Get bar heights
-        heights_comp1, heights_comp2, heights_alpha, heights_subtract, bottoms, bottoms_alpha, bar_ends = _get_bar_heights(type_scores, abs(self.diff))
-        # Get bar colors
-        bar_colors_comp1,bar_colors_comp2 = _get_bar_colors(type_scores, score_colors)
-        bar_colors_alpha, bar_colors_subtract = _get_bar_alpha_colors(heights_comp1, heights_comp2,
-                                                                      heights_alpha, bar_colors_comp1,
-                                                                      bar_colors_comp2)
-        # Plot the contributions for the word shift
-        ys = range(1,len(type_scores)+1)
-        ax.barh(ys, heights_comp1, 0.8, align='center', color=bar_colors_comp1,
-                linewidth=0.25, edgecolor=['black']*top_n)
-        ax.barh(ys, heights_comp2, 0.8, left=bottoms, align='center',
-                color=bar_colors_comp2, linewidth=0.25, edgecolor=['black']*top_n)
-        # Plot the counteracting components as faded bar charts
-        ax.barh(ys, heights_alpha, 0.8, left=bottoms_alpha, align='center',
-                color=bar_colors_alpha, alpha=0.35, linewidth=0.25,
-                edgecolor=['black']*top_n)
-        ax.barh(ys, heights_subtract, 0.8, left=bottoms, align='center',
-                color=bar_colors_subtract, alpha=0.35, linewidth=0.25,
-                edgecolor=['black']*top_n)
-
-        # Get total contribution component bars
-        # +freq+score, +freq-score, -freq+score, -freq-score, +s_diff, -s_diff
-        total_comp_sums = self.get_shift_component_sums()
-        comp_bars = [sum(total_comp_sums)] + list(reversed(total_comp_sums))
-        comp_scaling = abs(bar_ends[np.argmax(bar_ends)]/abs(comp_bars[np.argmax(comp_bars)]))
-        comp_bars = [comp_scaling*s for s in comp_bars]
-        ys = [top_n+2,top_n+3.5,top_n+3.5,top_n+5,top_n+5,top_n+6.5,top_n+6.5]
-        comp_colors = ['#707070'] + list(reversed(score_colors))
-        ax.barh(ys, comp_bars, 0.8, linewidth=0.25, align='center',
-                color=comp_colors, edgecolor=['black']*len(comp_bars))
-
-        # Estimate bar_type_space as a fraction of largest xlim
-        x_width = 2*abs(max(ax.get_xlim(), key=lambda x: abs(x)))
-        bar_type_space = bar_type_space_scaling*x_width
-        # Format word labels with up/down arrows and +/-
-        type_labels = [t for (t,_,_,_,_,_) in type_scores]
-        # Add word labels to bars
-        symbols = [r'$\Sigma$', u'\u25BD', u'\u25B3', u'-\u2193', u'-\u2191',
-                   u'+\u2193', u'+\u2191']
-        # TODO: Hack for making sure symbols end up on correct side. Better way?
+        # Get bar heights and colors
+        bar_heights = get_bar_heights(type_scores, abs(self.diff))
+        bar_colors = get_bar_colors(type_scores, bar_heights, kwargs)
+        # Initialize plot
+        f,ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
+        ax.margins(kwargs['y_margin'])
+        # Plot type contributions
+        ax = plot_contributions(ax, bar_heights, bar_colors, kwargs)
+        # Plot total sum contributions
+        ax,comp_bars = plot_total_contribution_sums(ax, total_comp_sums,
+                                                    bar_heights[-1], kwargs)
+        # Adjust top bars for correct direction of labels
         for i in [1, 3, 5]:
             if comp_bars[i] == 0:
-                comp_bars[i] = -0.000000001
+                comp_bars[i] = -0.0000000001
 
+        # Get labels for bars
+        type_labels = [t for (t,_,_,_,_,_) in type_scores]
+        # Set font type
+        if kwargs['serif']:
+            set_serif()
         # Add labels to bars
-        ax,text_objs = _set_bar_labels(ax, bar_ends+comp_bars,
-                                       list(range(1, len(type_scores)+1))+ys,
-                                       type_labels+symbols,
-                                       bar_type_space=bar_type_space)
-
-        # Adjust for width of word labels and make x-axis symmetric
-        ax = _adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs,
-                                     bar_type_space=bar_type_space,
-                                     width_scaling=width_scaling)
-        # Make x-axis tick labels bigger
-        x_ticks = ['{:.1f}'.format(t) for t in ax.get_xticks()]
-        ax.set_xticklabels(x_ticks, fontsize=14)
-
-        # Flip y-axis tick labels and make sure every 5th tick is labeled
-        y_ticks = list(range(1,top_n,5))+[top_n]
-        y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
-        ax.set_yticks(y_ticks)
-        ax.set_yticklabels(y_tick_labels, fontsize=14)
+        ax = set_bar_labels(f, ax, type_labels, bar_heights[-1], comp_bars, kwargs)
 
         # Add center dividing line
         y_min,y_max = ax.get_ylim()
@@ -478,37 +407,36 @@ class Shift:
                 linewidth=0.5)
 
         # Set cumulative diff inset
-        if insets:
-            f = get_cumulative_inset(f, self.type2shift_score, top_n,
-                                     inset_pos=inset_pos_cumulative)
-            f = get_text_size_inset(f, self.type2freq_1, self.type2freq_2,
-                                    system_names=system_names,
-                                    inset_pos=inset_pos_text_size)
+        if cumulative_inset:
+            f = get_cumulative_inset(f, self.type2shift_score, top_n, kwargs)
+        if text_size_inset:
+            f = get_text_size_inset(f, self.type2freq_1, self.type2freq_2, kwargs)
+        # Set guidance arrows (for relative plot)
+        #if guidance:
+        #    ax = get_guidance_annotations(ax, top_n, annotation_text=None)
 
+        # Make x-tick labels bigger, flip y-axis ticks and label every 5th one
+        ax = set_ticks(ax, top_n, kwargs)
         # Set axis labels and title
-        if xlabel is None:
-            xlabel = r'Per type average score shift $\delta s_{avg,r}$ (%)'
-        ax.set_xlabel(xlabel, fontsize=xlabel_fontsize)
-        if ylabel is None:
-            ylabel = r'Type rank $r$'
-        ax.set_ylabel(ylabel, fontsize=ylabel_fontsize)
-        if title is None:
+        ax.set_xlabel(kwargs['xlabel'], fontsize=kwargs['xlabel_fontsize'])
+        ax.set_ylabel(kwargs['ylabel'], fontsize=kwargs['ylabel_fontsize'])
+        if title not in kwargs:
             s_avg_1 = self.get_weighted_score(self.type2freq_1,self.type2score_1)
             s_avg_2 = self.get_weighted_score(self.type2freq_2,self.type2score_2)
             title = r'$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(1)}=$'+'{0:.2f}'\
                     .format(s_avg_1)+'\n'\
                     +r'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(2)}=$'+'{0:.2f}'\
                     .format(s_avg_2)
-            title = title
-        ax.set_title(title, fontsize=title_fontsize)
+            kwargs['title'] = title
+        ax.set_title(kwargs['title'], fontsize=kwargs['title_fontsize'])
 
         # Show and return plot
-        if tight:
+        if kwargs['tight']:
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 plt.tight_layout()
         if filename is not None:
-            plt.savefig(filename)
+            plt.savefig(filename, dpi=425)
         if show_plot:
             plt.show()
         return ax
@@ -592,239 +520,3 @@ def get_score_dictionary(scores, delimiter=','):
             type2score[t] = score
 
     return type2score
-
-def get_freqs_from_file(filename):
-    """
-    Parses text of a file line by line, splitting across white space
-
-    INPUT
-    -----
-    filename: str, file to load text from
-
-    OUTPUT
-    ------
-    type2freq: dict, keys are words and values are frequencies of those words
-    """
-    type2freq = Counter()
-    with open(filename, 'r') as f:
-        for line in f:
-            types = line.strip().split()
-            type2freq.update(types)
-    return dict(type2freq)
-
-def _get_shift_type_labels(type_scores):
-    """
-
-    """
-    type_labels = []
-    for (t,p_diff,s_diff,p_avg,s_ref_diff,total_diff) in type_scores:
-        type_label = t
-        if total_diff < 0:
-            if p_diff < 0:
-                type_label = u'\u2193'+type_label
-            else:
-                type_label = u'\u2191'+type_label
-            if s_ref_diff < 0:
-                type_label = '-'+type_label
-            else:
-                type_label = '+'+type_label
-        else:
-            if s_ref_diff < 0:
-                type_label = type_label+'-'
-            else:
-                type_label = type_label+'+'
-            if p_diff < 0:
-                type_label = type_label+u'\u2193'
-            else:
-                type_label = type_label+u'\u2191'
-        type_labels.append(type_label)
-    return type_labels
-
-def _get_bar_colors(type_scores, score_colors):
-    """
-
-    """
-    bar_colors_comp1 = []
-    bar_colors_comp2 = []
-    for (_,p_diff,s_diff,p_avg,s_ref_diff,_) in type_scores:
-        # Get first p_diff/s_ref_diff comp colors
-        if s_ref_diff > 0:
-            if p_diff > 0:
-                bar_colors_comp1.append(score_colors[0])
-            else:
-                bar_colors_comp1.append(score_colors[1])
-        else:
-            if p_diff > 0:
-                bar_colors_comp1.append(score_colors[2])
-            else:
-                bar_colors_comp1.append(score_colors[3])
-        # Get s_diff comp colors
-        if s_diff > 0:
-            bar_colors_comp2.append(score_colors[4])
-        else:
-            bar_colors_comp2.append(score_colors[5])
-    return (bar_colors_comp1, bar_colors_comp2)
-
-def _get_bar_heights(type_scores, normalizer):
-    """
-    tuple: (bar 1 height, bar 2 bottom, bar 2 height)
-    """
-    # TODO: return a dictionary to save on text?
-    heights_comp1 = []
-    heights_comp2 = []
-    heights_alpha = []
-    heights_subtract = []
-    bottoms = []
-    bottoms_alpha = []
-    bar_ends = []
-    for (_,p_diff,s_diff,p_avg,s_ref_diff,_) in type_scores:
-        comp1 = 100*p_diff*s_ref_diff/normalizer
-        comp2 = 100*p_avg*s_diff/normalizer
-        # Determine if direction of comp bars are congruent
-        if np.sign(s_ref_diff*p_diff)*np.sign(s_diff) == 1:
-            heights_comp1.append(comp1)
-            heights_comp2.append(comp2)
-            heights_alpha.append(0)
-            heights_subtract.append(0)
-            bar_ends.append(comp1+comp2)
-            bottoms.append(comp1)
-            bottoms_alpha.append(0)
-        else:
-            total_comp = comp1+comp2
-            bottoms.append(0)
-            bottoms_alpha.append(total_comp)
-            if abs(comp1) > abs(comp2):
-                heights_comp1.append(total_comp)
-                heights_comp2.append(0)
-                heights_subtract.append(comp2)
-                heights_alpha.append(comp1-total_comp)
-                bar_ends.append(comp1)
-            else:
-                heights_comp1.append(0)
-                heights_comp2.append(total_comp)
-                heights_subtract.append(comp1)
-                heights_alpha.append(comp2-total_comp)
-                bar_ends.append(comp2)
-    return (heights_comp1, heights_comp2, heights_alpha, heights_subtract,
-            bottoms, bottoms_alpha, bar_ends)
-
-def _get_bar_alpha_colors(heights_comp1, heights_comp2, heights_alpha,
-                          bar_colors_comp1, bar_colors_comp2):
-    bar_colors_alpha = []
-    bar_colors_subtract = []
-    for n in range(len(heights_comp1)):
-        if abs(heights_alpha[n]+heights_comp1[n]) > abs(heights_comp2[n]):
-            bar_colors_alpha.append(bar_colors_comp1[n])
-            bar_colors_subtract.append(bar_colors_comp2[n])
-        else:
-            bar_colors_alpha.append(bar_colors_comp2[n])
-            bar_colors_subtract.append(bar_colors_comp1[n])
-    return (bar_colors_alpha, bar_colors_subtract)
-
-def _set_bar_labels(ax, bar_ends, bar_heights, type_labels, bar_type_space=0.02):
-    text_objs = []
-    for bar_n,height in enumerate(range(len(bar_ends))):
-        height = bar_heights[bar_n]
-        width = bar_ends[bar_n]
-        if bar_ends[bar_n] < 0:
-            ha='right'
-            space = -1*bar_type_space
-        else:
-            ha='left'
-            space = bar_type_space
-        t = ax.text(width+space, height, type_labels[bar_n],
-                    ha=ha, va='center',fontsize=13)
-        text_objs.append(t)
-    return (ax, text_objs)
-
-def _adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs,
-                            bar_type_space, width_scaling):
-    # Get the max length
-    lengths = []
-    for bar_n,bar_end in enumerate(bar_ends):
-        bar_length = bar_end
-        bbox = text_objs[bar_n].get_window_extent(renderer=f.canvas.get_renderer())
-        bbox = ax.transData.inverted().transform(bbox)
-        text_length = abs(bbox[0][0]-bbox[1][0])
-        if bar_length > 0:
-            lengths.append(bar_length+text_length+bar_type_space)
-        else:
-            lengths.append(bar_length-text_length-bar_type_space)
-    # Add the top component bars to the lengths to check
-    comp_bars = [abs(b) for b in comp_bars]
-    lengths += comp_bars
-    # Get max length
-    max_length = width_scaling*abs(sorted(lengths, key=lambda x: abs(x),
-                                          reverse=True)[0])
-    # Symmetrize the axis around that max length
-    ax.set_xlim((-1*max_length, max_length))
-    return ax
-
-def get_cumulative_inset(f, type2shift_score, top_n,
-                         inset_pos=[0.19, 0.12, 0.175, 0.175]):
-    # Get cumulative scores
-    scores = sorted([100*s for s in type2shift_score.values()],
-                     key=lambda x:abs(x), reverse=True)
-    cum_scores = np.cumsum(scores)
-    # Plot cumulative difference
-    left, bottom, width, height = inset_pos
-    in_ax = f.add_axes([left, bottom, width, height])
-    in_ax.semilogy(cum_scores, range(1,len(cum_scores)+1), '-o', color='black',
-                   linewidth=0.5, markersize=1.2)
-    # Remove extra space around line plot
-    in_ax.set_xlim((min(cum_scores),max(cum_scores)))
-    in_ax.set_ylim((1, len(cum_scores)+1))
-    in_ax.margins(x=0)
-    in_ax.margins(y=0)
-    # Reverse the y-axis
-    y_min,y_max = in_ax.get_ylim()
-    in_ax.set_ylim((y_max, y_min))
-    # Set x-axis limits
-    total_score = cum_scores[-1]
-    x_min,x_max = in_ax.get_xlim()
-    if np.sign(total_score) == -1:
-        in_ax.set_xlim((x_min, 0))
-    else:
-        in_ax.set_xlim((0, x_max))
-    # Plot top_n line
-    x_min,x_max = in_ax.get_xlim()
-    in_ax.plot([x_min,x_max], [top_n,top_n], '-', color='black', linewidth=0.5)
-    # Make tick labels smaller
-    for ticks in [in_ax.xaxis.get_major_ticks(), in_ax.yaxis.get_major_ticks()]:
-        for tick in ticks:
-            tick.label.set_fontsize(12)
-    # Set labels
-    in_ax.set_xlabel('$\sum^r \delta \Phi_{\\tau}(T^{(1)}, T^{(2)})$', fontsize=12)
-    # Make background transparent
-    in_ax.patch.set_alpha(0)
-
-    return f
-
-def get_text_size_inset(f, type2freq_1, type2freq_2, system_names=['Sys. 1', 'Sys. 2'],
-                        inset_pos=[0.81, 0.12, 0.08, 0.08]):
-    # Get size of each text
-    n1 = sum(type2freq_1.values())
-    n2 = sum(type2freq_2.values())
-    # Normalize text sizes
-    n = max(n1, n2)
-    n1 = n1 / n
-    n2 = n2 / n
-    # Plot text size inset
-    left, bottom, width, height = inset_pos
-    in_ax = f.add_axes([left, bottom, width, height])
-    in_ax.barh([0.6, 0.4], [n1, n2], 0.1, color='#707070', linewidth=0.5,
-               edgecolor=['black']*2, tick_label=system_names)
-    # Rescale to make the bars appear to be more thin
-    in_ax.set_ylim((0, 1))
-    # Set title and label properties
-    in_ax.text(0.5, 0.75, 'Text Size:', horizontalalignment='center', fontsize=14)
-    for tick in in_ax.yaxis.get_major_ticks():
-        tick.label.set_fontsize(12)
-    in_ax.tick_params(axis='y', length=0)
-    # Turn off axes and make transparent
-    for side in ['left', 'right', 'top', 'bottom']:
-        in_ax.spines[side].set_visible(False)
-    in_ax.get_xaxis().set_visible(False)
-    in_ax.set_alpha(0)
-
-    return f
