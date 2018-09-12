@@ -263,8 +263,9 @@ def set_ticks(ax, top_n, plotting_params):
 
     return ax
 
-def get_cumulative_inset(f, type2shift_score, top_n,
-                         inset_pos=[0.19, 0.12, 0.175, 0.175]):
+def get_cumulative_inset(f, type2shift_score, top_n, plotting_params):
+    # Get plotting params
+    inset_pos = plotting_params['pos_cumulative_inset']
     # Get cumulative scores
     scores = sorted([100*s for s in type2shift_score.values()],
                      key=lambda x:abs(x), reverse=True)
@@ -302,8 +303,10 @@ def get_cumulative_inset(f, type2shift_score, top_n,
 
     return f
 
-def get_text_size_inset(f, type2freq_1, type2freq_2, system_names=['Sys. 1', 'Sys. 2'],
-                        inset_pos=[0.81, 0.12, 0.08, 0.08]):
+def get_text_size_inset(f, type2freq_1, type2freq_2, plotting_params):
+    # Get plotting params
+    system_names = plotting_params['system_names']
+    inset_pos = plotting_params['pos_text_size_inset']
     # Get size of each text
     n1 = sum(type2freq_1.values())
     n2 = sum(type2freq_2.values())
