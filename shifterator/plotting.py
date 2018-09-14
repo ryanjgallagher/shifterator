@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+plotting.py
+
+Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
+
+Requires: Python 3
+
+TODO:
+- Add params for explicitly setting fonts
+- Add doc strings
+"""
+
 def get_plotting_params(plotting_params):
     if 'width' not in plotting_params:
         plotting_params['width'] = 7
