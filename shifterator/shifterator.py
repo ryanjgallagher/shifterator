@@ -11,8 +11,8 @@ TODO:
 - Make it easy to remove / reset the filter. This will involve having to hold
   onto stop words, their freqs, and their values (discarded as of now)
 - Make it so you can specify words as stop words instead of just a filter window
-- Add symbol when a type is borrowing a score from the other system
 - Properly handle types without scores
+- Add symbol when a type is borrowing a score from the other system
 - Clean up class docstrings to fit standards of where things should be described
   (whether it's in init or under class, and listing what funcs are available)
 """
@@ -31,27 +31,17 @@ from collections import Counter
 # ---------------------------- GENERAL SHIFT CLASS -----------------------------
 # ------------------------------------------------------------------------------
 class Shift:
-    def __init__(self, system_1, system_2, reference_value=None,
-                 filenames=True, type2score_1=None, type2score_2=None,
-                 stop_lens=None, delimiter=','):
+    def __init__(self, system_1, system_2, type2score_1=None, type2score_2=None,
+                 reference_value=None, stop_lens=None, delimiter=','):
         """
         Shift object for calculating weighted scores of two systems of types,
         and the shift between them
 
         Parameters
         ----------
-        system_1, system_2: dict or str
-            if dict, then keys are types of a system and values are frequencies
-            of those types. if str and filenames=False, then the types are
-            assumed to be tokens separated by white space. If str and
-            filenames=True, then types are assumed to be tokens and text is read
-            in line by line from the designated file and split on white space
-        reference_value: float, optional
-            the reference score from which to calculate the deviation. If None,
-            defaults to the weighted score of system_1
-        filenames: bool, optional
-            True if system_1 and system_2 are filenames of files with text to
-            parse
+        system_1, system_2: dict
+            keys are types of a system and values are frequencies
+            of those types
         type2score_1, type2score_2: dict or str, optional
             if dict, types are keys and values are "scores" associated with each
             type (e.g., sentiment). If str, either the name of a score dict or
@@ -59,28 +49,17 @@ class Shift:
             line, separated by commas. If None and other type2score is None,
             defaults to uniform scores across types. Otherwise defaults to the
             other type2score dict
+        reference_value: float, optional
+            the reference score from which to calculate the deviation. If None,
+            defaults to the weighted score of system_1
         stop_lens: iterable of 2-tuples, optional
             denotes intervals that should be excluded when calculating shift
             scores
         """
-        # Load type2freq dictionaries
-        if isinstance(system_1, dict) and isinstance(system_2, dict):
-            self.type2freq_1 = system_1
-            self.type2freq_2 = system_2
-        elif isinstance(system_1, str) and isinstance(system_2, str):
-            if filenames is True:
-                self.type2freq_1 = get_freqs_from_file(system_1)
-                self.type2freq_2 = get_freqs_from_file(system_2)
-            elif filenames is False:
-                self.type2freq_1 = dict(Counter(system_1.split()))
-                self.type2freq_2 = dict(Counter(system_2.split()))
-        else:
-            warning = 'Shift object was not given text, a file to parse, or '+\
-                      'frequency dictionaries. Check input.'
-            warnings.warn(warning, Warning)
-            self.type2freq_1 = dict()
-            self.type2freq_2 = dict()
-        # Load type2score dictionaries
+        # Set type2freq dictionaries
+        self.type2freq_1 = system_1
+        self.type2freq_2 = system_2
+        # Set type2score dictionaries
         if type2score_1 is not None and type2score_2 is not None:
             self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
             self.type2score_2 = get_score_dictionary(type2score_2, delimiter)
@@ -96,13 +75,20 @@ class Shift:
         # Filter type dictionaries by stop lense
         self.stop_lens = stop_lens
         if stop_lens is not None:
-            self.type2freq_1,self.type2score_1,sw_1 = filter_by_scores(self.type2freq_1,
-                                                                       self.type2score_1,
+            self.type2freq_1,self.type2score_1,sw_1 = filter_by_scores(type2freq_1,
+                                                                       type2score_1,
                                                                        stop_lens)
-            self.type2freq_2,self.type2score_2,sw_2 = filter_by_scores(self.type2freq_2,
-                                                                       self.type2score_2,
+            self.type2freq_2,self.type2score_2,sw_2 = filter_by_scores(type2freq_2,
+                                                                       type2score_2,
                                                                        stop_lens)
             self.stop_words = sw_1.union(sw_2)
+        # Get common vocabulary
+        self.types = self.get_types(self.type2freq_1, self.type2score_1,
+                                    self.type2freq_2, self.type2score_2)
+        # Assume missing scores in each vocabulary (TODO: add options)
+        self.type2score_1,self.type2score_2 = get_missing_scores (self.type2score_1,
+                                                                  self.type2score_2)
+
         # Set reference value
         if reference_value is not None:
             self.reference_value = reference_value
@@ -131,10 +117,8 @@ class Shift:
         """
         # Enforce common score vocabulary
         if len(set(type2score_1.keys()).difference(type2score_2.keys())) != 0:
-            warning = 'Score dictionaries do not have a common vocabulary. '\
-                      +'Shift is not well-defined.'
+            warning = 'Score dictionaries do not share a common vocabulary.'
             warnings.warn(warning, Warning)
-            #return
         # Get observed types that are also in score dicts
         types_1 = set(type2freq_1.keys()).intersection(set(type2score_1.keys()))
         types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
@@ -179,10 +163,10 @@ class Shift:
 
         Parameters
         ----------
-        type2freq: dict
+        type2freq_1, type2freq_2: dict
             keys are types and values are frequencies. If None, defaults to the
             system_1 and system_2 type2freq dicts respectively
-        type2score: dict
+        type2score_1, type2score_2: dict
             keys are types and values are scores. If None, defaults to the
             system_1 and system_2 type2score dicts respectively
         reference_value: float
@@ -190,10 +174,6 @@ class Shift:
             defaults to the weighted score given by type2freq_1 and type2score_1
         normalize: bool
             if True normalizes shift scores so they sum to 1 or -1
-        details: bool,
-            if True returns each component of the shift score and the final
-            normalized shift score. If false, only returns the normalized shift
-            scores
 
         Returns
         -------
@@ -211,7 +191,7 @@ class Shift:
             relative deviation from reference score, i.e. 0.5*(s_i,2+s_i,1)-s_ref
             for type i
         type2shift_score: dict
-            words are keys and values are shift scores
+            keys are types and values are shift scores
         """
         # Check input of type2freq and type2score dicts
         if type2freq_1 is None:
@@ -223,11 +203,7 @@ class Shift:
         if type2score_2 is None:
             type2score_2 = self.type2score_2
 
-        # TODO: get rid of this hack!
-        type2score_1 = {t:s for t,s in type2score_1.items() if t in type2score_2}
-        type2score_2 = {t:s for t,s in type2score_2.items() if t in type2score_1}
-
-        # Enforce common score vocabulary
+        # Get type vocabulary
         types = self.get_types(type2freq_1, type2score_1,
                                type2freq_2, type2score_2)
 
@@ -239,25 +215,23 @@ class Shift:
                     for t in types}
         type2p_2 = {t:type2freq_2[t]/total_freq_2 if t in type2freq_2 else 0
                     for t in types}
-        # Get average relative frequency of types
-        type2p_avg = {t:0.5*(type2p_1[t]+type2p_2[t]) for t in types}
 
         # Check input of reference value
         if reference_value is None:
             s_avg_ref = self.get_weighted_score(type2freq_1, type2score_1)
-        # Calculate relative diffs in freq
-        type2p_diff = {t:type2p_2[t]-type2p_1[t] for t in types}
-        # Calculate relative diffs in score and relative diff from ref
+
+        # Calculate shift components
+        type2p_avg = {}
+        type2p_diff = {}
         type2s_diff = {}
         type2s_ref_diff = {}
         for t in types:
+            type2p_avg[t] = 0.5*(type2p_1[t]+type2p_2[t])
+            type2p_diff[t] = type2p_2[t]-type2p_1[t]
             type2s_diff[t] = type2score_2[t]-type2score_1[t]
             type2s_ref_diff[t] = 0.5*(type2score_2[t]+type2score_1[t])-s_avg_ref
-
-        # Calculate total shift scores
-        type2shift_score = {t : type2p_diff[t]*type2s_ref_diff[t]\
-                                +type2s_diff[t]*type2p_avg[t]
-                                for t in types if t in types}
+            type2shift_score[t] = type2p_diff[t]*type2s_ref_diff[t]\
+                                  +type2s_diff[t]*type2p_avg[t]
 
         # Normalize the total shift scores
         total_diff = sum(type2shift_score.values())
@@ -266,8 +240,7 @@ class Shift:
             type2shift_score = {t : shift_score/abs(total_diff) for t,shift_score
                                 in type2shift_score.items()}
 
-
-        # Set results in shift object
+        # Set results in shift object (TODO: is this unexpected behavior?)
         self.type2p_diff = type2p_diff
         self.type2s_diff = type2s_diff
         self.type2p_avg = type2p_avg
@@ -296,12 +269,9 @@ class Shift:
             type2score_2 = self.type2score_2
         # Get shift scores
         if self.type2shift_score is None:
-            shift_scores = self.get_shift_scores(type2freq_1=type2freq_1,
-                                                 type2score_1=type2score_1,
-                                                 type2freq_2=type2freq_2,
-                                                 type2score_2=type2score_2,
-                                                 reference_value=reference_value,
-                                                 normalize=normalize,
+            shift_scores = self.get_shift_scores(type2freq_1, type2score_1,
+                                                 type2freq_2, type2score_2,
+                                                 reference_value, normalize,
                                                  details=True)
         else:
             shift_scores = [(t, self.type2p_diff[t], self.type2s_diff[t],
@@ -520,3 +490,27 @@ def get_score_dictionary(scores, delimiter=','):
             type2score[t] = score
 
     return type2score
+
+def get_missing_scores (type2score_1, type2score_2):
+    """
+    Get missing scores between systems by setting the score in one system with
+    the score in the other system
+
+    Parameters
+    ----------
+    type2score_1, type2score_2: dict
+        keys are types and values are scores
+
+    Output
+    ------
+    type2score_1, type2score_2: dict
+        keys are types and values are scores, updated to have scores across all
+        types between the two score dictionaries
+    """
+    types = set(type2score_1.keys()).union(set(type2score_2.keys()))
+    for t in types:
+        if t not in type2score_1:
+            type2score_1[t] = type2score_2[t]
+        elif t not in type2score_2:
+            type2score_2[t] = type2score_1[t]
+    return (type2score_1, type2score_2)
