@@ -103,7 +103,7 @@ class kl_divergence_shift(relative_shift):
         n_ref = sum(reference.values())
         type2p_ref = {t:s/n_ref for t,s in reference.items()}
         n_comp = sum(comparison_text.values())
-        type2p_ {t:s/n_comp for t,s in comparison.items()}
+        type2p_comp = {t:s/n_comp for t,s in comparison.items()}
         # Get surprisal of each type
         type2surprisal_ref = get_type_surprisals(type2p_ref, base=base)
         type2surprisal_comp = get_type_surprisals(type2p_comp, base=base)
