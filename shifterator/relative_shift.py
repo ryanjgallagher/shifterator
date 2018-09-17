@@ -11,8 +11,8 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 
-import shifterator
-from helper import *
+import shifterator.shifterator
+from shifterator.helper import *
 
 # ------------------------------------------------------------------------------
 # --------------------------- Relative shift classes ---------------------------

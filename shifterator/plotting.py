@@ -10,6 +10,8 @@ TODO:
 - Add params for explicitly setting fonts
 - Add doc strings
 """
+import numpy as np
+from matplotlib import rcParams
 
 def get_plotting_params(plotting_params):
     if 'width' not in plotting_params:
@@ -142,11 +144,11 @@ def get_comp_bar_colors(type_scores, plotting_params):
             bar_colors_comp2.append(score_colors[5])
     return [bar_colors_comp1, bar_colors_comp2]
 
-def get_bar_fade_colors(bar_heights, comp_bar_colors):
+def get_fade_bar_colors(bar_heights, comp_bar_colors):
     """
     """
     # Unpack bar heights
-    height_c1, height_c2, heights_alpha,_,_,_,_,_ = bar_heights
+    heights_c1, heights_c2, heights_alpha,_,_,_,_ = bar_heights
     # Get colors for how contributions cancel out
     bar_colors_alpha = []
     bar_colors_subtract = []
@@ -165,13 +167,13 @@ def plot_contributions(ax, bar_heights, bar_colors, plotting_params):
     """
     # Unpack bar heights and colors
     heights_c1,heights_c2,heights_alpha,heights_subtract,bms,bms_alpha,ends=bar_heights
-    colors_c1,colors_c2,colors_alpha,colors_fade = bar_colors
+    colors_c1,colors_c2,colors_alpha,colors_subtract = bar_colors
     # Set plotting params
-    ys = range(1,len(bar_heights)+1)
-    alpha = plotting_params['alpha']
+    ys = range(1,len(heights_c1)+1)
+    alpha = plotting_params['alpha_fade']
     width = plotting_params['bar_width']
     linewidth = plotting_params['bar_linewidth']
-    edgecolor = ['black']*top_n # hack b/c matplotlib has a bug
+    edgecolor = ['black']*len(heights_c1) # hack b/c matplotlib has a bug
     # Plot main contributions
     ax.barh(ys, heights_c1, width, align='center', color=colors_c1,
             linewidth=linewidth, edgecolor=edgecolor, zorder=10)
@@ -198,17 +200,17 @@ def plot_total_contribution_sums(ax, total_comp_sums, bar_ends, plotting_params)
     ys = [n+2, n+3.5, n+3.5, n+5, n+5, n+6.5, n+6.5]
     comp_colors = ['#707070'] + list(reversed(plotting_params['score_colors']))
     width = plotting_params['bar_width']
-    linewidth = plotting_params['linewidth']
+    linewidth = plotting_params['bar_linewidth']
     edgecolor = ['black']*len(comp_bars)
     # Plot total contribution bars
-    ax.barh(ys, comp_bars, width, align='center', color=comp_colors
+    ax.barh(ys, comp_bars, width, align='center', color=comp_colors,
             linewidth=linewidth, edgecolor=edgecolor)
     return ax, comp_bars
 
 def get_bar_type_space(ax, plotting_params):
     # Estimate bar_type_space as a fraction of largest xlim
     x_width = 2*abs(max(ax.get_xlim(), key=lambda x: abs(x)))
-    bar_type_space = bar_type_space_scaling*x_width
+    bar_type_space = plotting_params['bar_type_space_scaling']*x_width
     return bar_type_space
 
 def set_bar_labels(f, ax, type_labels, bar_ends, comp_bars, plotting_params):
@@ -223,7 +225,7 @@ def set_bar_labels(f, ax, type_labels, bar_ends, comp_bars, plotting_params):
     # Set all bar labels
     text_objs = []
     fontsize = plotting_params['label_fontsize']
-    for bar_n,width in enumerate(range(len(all_bar_ends))):
+    for bar_n,width in enumerate(all_bar_ends):
         height = bar_heights[bar_n]
         if width < 0:
             ha='right'
@@ -239,7 +241,7 @@ def set_bar_labels(f, ax, type_labels, bar_ends, comp_bars, plotting_params):
                                 bar_type_space, plotting_params)
     return ax
 
-def adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_obj, bar_type_space,
+def adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs, bar_type_space,
                            plotting_params):
     # Get the max length
     lengths = []
@@ -349,7 +351,7 @@ def get_text_size_inset(f, type2freq_1, type2freq_2, plotting_params):
 
 def get_guidance_annotations(ax, top_n, score_diff=None, annotation_text=None):
     """
-    Note: this annotation might only make sense for relative shifts
+    Note: this annotation only make sense for relative shifts
     """
     x_min,x_max = ax.get_xlim()
     y = np.floor(top_n / 2)+0.5 # depends on width=0.8 for bars

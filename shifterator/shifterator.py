@@ -9,7 +9,6 @@ TODO:
   onto stop words, their freqs, and their values (discarded as of now)
 - Make it so you can specify words as stop words instead of just a filter window
 - Properly handle types without scores
-- Add symbol when a type is borrowing a score from the other system
 - Clean up class docstrings to fit standards of where things should be described
   (whether it's in init or under class, and listing what funcs are available)
 """
@@ -19,12 +18,10 @@ import sys
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
-from plotting import *
-from matplotlib import rc
-from matplotlib import rcParams
 from collections import Counter
 
-from helper import *
+from shifterator.helper import *
+from shifterator.plotting import *
 
 # ------------------------------------------------------------------------------
 # ---------------------------- GENERAL SHIFT CLASS -----------------------------
@@ -85,8 +82,10 @@ class Shift:
         self.types = self.get_types(self.type2freq_1, self.type2score_1,
                                     self.type2freq_2, self.type2score_2)
         # Assume missing scores in each vocabulary (TODO: add options)
-        self.type2score_1,self.type2score_2 = get_missing_scores (self.type2score_1,
-                                                                  self.type2score_2)
+        missing_scores_info = get_missing_scores(self.type2score_1, self.type2score_2)
+        self.type2score_1 = missing_scores_info[0]
+        self.type2score_2 = missing_scores_info[1]
+        self.missing_score_types = missing_scores_info[2]
 
         # Set reference value
         if reference_value is not None:
@@ -220,10 +219,11 @@ class Shift:
             s_avg_ref = self.get_weighted_score(type2freq_1, type2score_1)
 
         # Calculate shift components
-        type2p_avg = {}
-        type2p_diff = {}
-        type2s_diff = {}
-        type2s_ref_diff = {}
+        type2p_avg = dict()
+        type2p_diff = dict()
+        type2s_diff = dict()
+        type2s_ref_diff = dict()
+        type2shift_score = dict()
         for t in types:
             type2p_avg[t] = 0.5*(type2p_1[t]+type2p_2[t])
             type2p_diff[t] = type2p_2[t]-type2p_1[t]
@@ -350,6 +350,7 @@ class Shift:
         # Plot type contributions
         ax = plot_contributions(ax, bar_heights, bar_colors, kwargs)
         # Plot total sum contributions
+        total_comp_sums = self.get_shift_component_sums()
         ax,comp_bars = plot_total_contribution_sums(ax, total_comp_sums,
                                                     bar_heights[-1], kwargs)
         # Adjust top bars for correct direction of labels
@@ -359,11 +360,15 @@ class Shift:
 
         # Get labels for bars
         type_labels = [t for (t,_,_,_,_,_) in type_scores]
+        # Add indicator if type borrwed a score
+        type_labels = [t+'*' if t in self.missing_score_types else t
+                       for t in type_labels]
         # Set font type
         if kwargs['serif']:
             set_serif()
         # Add labels to bars
-        ax = set_bar_labels(f, ax, type_labels, bar_heights[-1], comp_bars, kwargs)
+        labels = type_labels+kwargs['symbols']
+        ax = set_bar_labels(f, ax, labels, bar_heights[-1], comp_bars, kwargs)
 
         # Add center dividing line
         y_min,y_max = ax.get_ylim()
@@ -389,7 +394,7 @@ class Shift:
         # Set axis labels and title
         ax.set_xlabel(kwargs['xlabel'], fontsize=kwargs['xlabel_fontsize'])
         ax.set_ylabel(kwargs['ylabel'], fontsize=kwargs['ylabel_fontsize'])
-        if title not in kwargs:
+        if 'title' not in kwargs:
             s_avg_1 = self.get_weighted_score(self.type2freq_1,self.type2score_1)
             s_avg_2 = self.get_weighted_score(self.type2freq_2,self.type2score_2)
             title = r'$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(1)}=$'+'{0:.2f}'\
@@ -409,107 +414,3 @@ class Shift:
         if show_plot:
             plt.show()
         return ax
-
-# ------------------------------------------------------------------------------
-# ------------------------------ HELPER FUNCTIONS ------------------------------
-# ------------------------------------------------------------------------------
-def filter_by_scores(type2freq, type2score, stop_lens):
-    """
-    Loads a dictionary of type scores
-
-    Parameters
-    ----------
-    type2freq: dict
-        keys are types, values are frequencies of those types
-    type2score: dict
-        keys are types, values are scores associated with those types
-    stop_lens: iteratble of 2-tuples
-        denotes intervals that should be excluded when calculating shift scores
-
-    Returns
-    -------
-    type2freq_new,type2score_new: dict,dict
-        Frequency and score dicts filtered of words whose score fall within stop
-        window
-    """
-    type2freq_new = dict()
-    type2score_new = dict()
-    stop_words = set()
-    for lower_stop,upper_stop in stop_lens:
-        for t in type2score:
-            if ((type2score[t] < lower_stop) or (type2score[t] > upper_stop))\
-            and t not in stop_words:
-                try:
-                    type2freq_new[t] = type2freq[t]
-                except KeyError:
-                    pass
-                type2score_new[t] = type2score[t]
-            else:
-                stop_words.add(t)
-
-    return (type2freq_new, type2score_new, stop_words)
-
-def get_score_dictionary(scores, delimiter=','):
-    """
-    Loads a dictionary of type scores
-
-    Parameters
-    ----------
-    scores: dict or str
-        if dict, then returns the dict automatically. If str, then it is either
-        the name of a shifterator dictionary to load, or file path of dictionary
-        to load. File should be two columns of types and scores on each line,
-        separated by delimiter
-            Options: 'labMT_english'
-    stop_lens: iteratble of 2-tuples
-        denotes intervals that should be excluded when calculating shift scores
-    delimiter: str
-        delimiter used in the dictionary file
-
-    Returns
-    -------
-    type2score, dict
-        dictionary where keys are types and values are scores of those types
-    """
-    if type(scores) is dict:
-        return scores
-    # Check if dictionary name is in shifterator data
-    score_dicts = os.listdir('data')
-    if scores in score_dicts:
-        dict_file = 'data/'+scores
-    elif  scores+'.csv' in score_dicts:
-        dict_file = 'data/'+scores+'.csv'
-    else: # Assume file path
-        dict_file = scores
-    # Load score dictionary
-    type2score = {}
-    with open(dict_file, 'r') as f:
-        for line in f:
-            t,score = line.strip().split(delimiter)
-            type2score[t] = score
-
-    return type2score
-
-def get_missing_scores (type2score_1, type2score_2):
-    """
-    Get missing scores between systems by setting the score in one system with
-    the score in the other system
-
-    Parameters
-    ----------
-    type2score_1, type2score_2: dict
-        keys are types and values are scores
-
-    Output
-    ------
-    type2score_1, type2score_2: dict
-        keys are types and values are scores, updated to have scores across all
-        types between the two score dictionaries
-    """
-    types = set(type2score_1.keys()).union(set(type2score_2.keys()))
-    for t in types:
-        if t not in type2score_1:
-            type2score_1[t] = type2score_2[t]
-        elif t not in type2score_2:
-            type2score_2[t] = type2score_1[t]
-    return (type2score_1, type2score_2)

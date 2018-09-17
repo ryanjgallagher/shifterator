@@ -132,18 +132,21 @@ def get_missing_scores (type2score_1, type2score_2):
         keys are types and values are scores, updated to have scores across all
         types between the two score dictionaries
     """
+    missing_types = set()
     types = set(type2score_1.keys()).union(set(type2score_2.keys()))
     for t in types:
         if t not in type2score_1:
             type2score_1[t] = type2score_2[t]
+            missing_types.add(t)
         elif t not in type2score_2:
             type2score_2[t] = type2score_1[t]
-    return (type2score_1, type2score_2)
+            missing_types.add(t)
+    return (type2score_1, type2score_2, missing_types)
 
 # ------------------------------------------------------------------------------
 # -------------------------------- Entropy Funcs -------------------------------
 # ------------------------------------------------------------------------------
-def get_type_surprisals(type2p, base=2, alpha=alpha):
+def get_type_surprisals(type2p, base=2, alpha=1):
     """
 
     TODO: set order of entropy using alpha
