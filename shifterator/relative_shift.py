@@ -1,11 +1,9 @@
 """
 relative_shift.py
 
-Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-Last updated: June 13th, 2018
-
 TODO:
 - Check reference and comparison are correct on the KLD shift
+- Change the axis / title labels for shifts
 """
 import os
 import sys
@@ -14,9 +12,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import shifterator
+from helper import *
 
 # ------------------------------------------------------------------------------
-# --------------------------- RELATIVE SHIFT CLASSES ---------------------------
+# --------------------------- Relative shift classes ---------------------------
 # ------------------------------------------------------------------------------
 class relative_shift(shifterator.shift):
     def __init__(self, reference, comparison, type2score_ref=None,
@@ -84,36 +83,25 @@ class sentiment_shift(relative_shift):
                                 delimiter)
 
 class entropy_shift(relative_shift):
+    """
+
+    """
     def __init__(self, reference, comparison, base=2, stop_lens=None):
-        # Normalize reference and comparison frequencies
-        n_ref = sum(reference.values())
-        type2p_ref = {t:s/n_ref for t,s in reference.items()}
-        n_comp = sum(comparison_text.values())
-        type2p_comp =  {t:s/n_comp for t,s in comparison.items()}
-        # Get surprisal of each type
-        type2surprisal_ref = get_type_surprisals(type2p_ref, base=base)
-        type2surprisal_comp = get_type_surprisals(type2p_comp, base=base)
+        # Get surprisal scores
+        type2s_ref, type2s_comp = get_surprisal_scores(system_1, system_2,
+                                                       base=2, alpha=1)
         # Initialize shift
-        relative_shift.__init__(reference, comparison, type2surprisal_ref,
-                                type2surprisal_comp, stop_lens)
+        relative_shift.__init__(reference, comparison, type2s_ref, type2s_comp,
+                                stop_lens)
 
 class kl_divergence_shift(relative_shift):
+    """
+
+    """
     def __init__(self, reference, comparison, base=2, stop_lens=None):
-        # Normalize reference and comparison frequencies
-        n_ref = sum(reference.values())
-        type2p_ref = {t:s/n_ref for t,s in reference.items()}
-        n_comp = sum(comparison_text.values())
-        type2p_comp = {t:s/n_comp for t,s in comparison.items()}
-        # Get surprisal of each type
-        type2surprisal_ref = get_type_surprisals(type2p_ref, base=base)
-        type2surprisal_comp = get_type_surprisals(type2p_comp, base=base)
+        # Get surprisal scores
+        type2s_ref, type2s_comp = get_surprisal_scores(system_1, system_2,
+                                                       base=2, alpha=1)
         # Initialize shift
         relative_shift.__init__(comparison, comparison, type2surprisal_ref,
                                 type2surprisal_comp, stop_lens)
-
-
-def get_type_surprisals(type2p, base=2):
-    """
-
-    """
-    pass

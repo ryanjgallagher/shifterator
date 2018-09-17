@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """
 shifterator.py
-
-Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
 
 Requires: Python 3
 
@@ -26,6 +23,8 @@ from plotting import *
 from matplotlib import rc
 from matplotlib import rcParams
 from collections import Counter
+
+from helper import *
 
 # ------------------------------------------------------------------------------
 # ---------------------------- GENERAL SHIFT CLASS -----------------------------
