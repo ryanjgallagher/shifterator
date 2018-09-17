@@ -60,6 +60,7 @@ class Shift:
             self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
             self.type2score_2 = get_score_dictionary(type2score_2, delimiter)
         elif type2score_1 is not None:
+            print(type(type2score_1))
             self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
             self.type2score_2 = self.type2score_1
         elif type2score_2 is not None:

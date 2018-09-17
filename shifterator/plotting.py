@@ -7,6 +7,7 @@ Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
 Requires: Python 3
 
 TODO:
+- Make func for missing type labels and add param for setting borrowing symbol
 - Add params for explicitly setting fonts
 - Add doc strings
 """

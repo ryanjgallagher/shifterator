@@ -151,8 +151,12 @@ def get_type_surprisals(type2p, base=2, alpha=1):
 
     TODO: set order of entropy using alpha
     """
-    type2surprise = {-1*log(p, base) for p in type2p}
+    type2surprise = {t : -1*log(p, base) for t,p in type2p.items()}
     return type2surprise
+
+def get_type_logs(type2p, base=2, alpha=1):
+    type2log = {t : log(p, base) for t,p in type2p.items()}
+    return type2log
 
 def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
     # Normalize reference and comparison frequencies
@@ -171,14 +175,12 @@ def get_jsd_scores(type2freq_1, type2freq_2, base=2, alpha=1, weight_1=0.5,
     # Get mixed distribution
     type2m = get_mixed_distribution(type2p, type2q, p=weight_1, q=weight_2)
     # Get surprisal of each type
-    type2surprisal_p = get_type_surprisals(type2p, base=base, alpha=alpha)
-    type2surprisal_q = get_type_surprisals(type2q, base=base, alpha=alpha)
-    type2surprisal_m = get_type_surprisals(type2m, base=base, alpha=alpha)
+    type2log_p = get_type_logs(type2p, base=base, alpha=alpha)
+    type2log_q = get_type_logs(type2q, base=base, alpha=alpha)
+    type2log_m = get_type_logs(type2m, base=base, alpha=alpha)
     # Get scores (handle missing types)
-    type2score_1 = {0.5*type2surprisal_m[t]-type2surprisal_p[t]
-                    if t in type2surprisal_p else 0
-                    for t in type2surprisal_m}
-    type2score_2 = {0.5*type2surprisal_q[t]-type2surprisal_m[t]
-                    if t in type2surprisal_q else 0
-                    for t in type2surprisal_m}
+    type2score_1 = {t : 0.5*(type2log_m[t] - type2log_p[t])
+                    if t in type2log_p else 0 for t in type2log_m}
+    type2score_2 = {t : 0.5*(type2log_q[t] - type2log_m[t])
+                    if t in type2log_q else 0 for t in type2log_m}
     return type2score_1, type2score_2
