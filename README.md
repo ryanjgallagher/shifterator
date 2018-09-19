@@ -42,7 +42,7 @@ Word shifts are quantify how each word contributes to the difference between two
 
 ![Contribution equation](https://github.com/ryanjgallagher/shifterator/blob/master/figures/contribution.png)  
 
-The contribution depends on the change in relativel frequency of a word, the relative difference between the average score of the word and the reference text's score, and the difference in scores (which is zero if working with a single score dictionary). The main types of contributes are given by:
+The contribution depends on the change in relative frequency of a word, the relative difference between the average score of the word and the reference text's score, and the difference in scores (which is zero if working with a single score dictionary). The main types of contributes depend on how the signs of the contribution components:
 1. (+ &#8593;): A relatively positive word (+) is used more (&#8593;)
 2. (- &#8595;): A relatively negative word (-) is used less (&#8595;)
 3. (+ &#8595;): A relatively positive word (+) is used less (&#8595;)
