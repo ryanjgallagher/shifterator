@@ -4,6 +4,8 @@ shifterator.py
 Requires: Python 3
 
 TODO:
+- Make "system names" a parameter of the shift class, so that "Reference" and
+  "Comparison" can be passed via the relative shift classes
 - Add funcs to shift class that allow for easy updating of type2freq dicts
 - Make it easy to remove / reset the filter. This will involve having to hold
   onto stop words, their freqs, and their values (discarded as of now)
@@ -60,7 +62,6 @@ class Shift:
             self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
             self.type2score_2 = get_score_dictionary(type2score_2, delimiter)
         elif type2score_1 is not None:
-            print(type(type2score_1))
             self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
             self.type2score_2 = self.type2score_1
         elif type2score_2 is not None:
@@ -72,11 +73,11 @@ class Shift:
         # Filter type dictionaries by stop lense
         self.stop_lens = stop_lens
         if stop_lens is not None:
-            self.type2freq_1,self.type2score_1,sw_1 = filter_by_scores(type2freq_1,
-                                                                       type2score_1,
+            self.type2freq_1,self.type2score_1,sw_1 = filter_by_scores(self.type2freq_1,
+                                                                       self.type2score_1,
                                                                        stop_lens)
-            self.type2freq_2,self.type2score_2,sw_2 = filter_by_scores(type2freq_2,
-                                                                       type2score_2,
+            self.type2freq_2,self.type2score_2,sw_2 = filter_by_scores(self.type2freq_2,
+                                                                       self.type2score_2,
                                                                        stop_lens)
             self.stop_words = sw_1.union(sw_2)
         # Get common vocabulary
@@ -201,6 +202,10 @@ class Shift:
             type2freq_2 = self.type2freq_2
         if type2score_2 is None:
             type2score_2 = self.type2score_2
+        if reference_value is None:
+            s_avg_ref = self.reference_value
+        else:
+            s_avg_ref = reference_value
 
         # Get type vocabulary
         types = self.get_types(type2freq_1, type2score_1,
@@ -214,10 +219,6 @@ class Shift:
                     for t in types}
         type2p_2 = {t:type2freq_2[t]/total_freq_2 if t in type2freq_2 else 0
                     for t in types}
-
-        # Check input of reference value
-        if reference_value is None:
-            s_avg_ref = self.get_weighted_score(type2freq_1, type2score_1)
 
         # Calculate shift components
         type2p_avg = dict()
@@ -303,12 +304,16 @@ class Shift:
             else:
                 neg_s_diff += p_avg*s_diff
 
-        return (pos_freq_pos_score, pos_freq_neg_score,
-                neg_freq_pos_score, neg_freq_neg_score,
+        #return (pos_freq_pos_score, pos_freq_neg_score,
+        #        neg_freq_pos_score, neg_freq_neg_score,
+        #        pos_s_diff, neg_s_diff)
+        return (pos_freq_pos_score, neg_freq_pos_score,
+                pos_freq_neg_score, neg_freq_neg_score,
                 pos_s_diff, neg_s_diff)
 
-    def get_shift_graph(self, top_n=50, text_size_inset=True, cumulative_inset=True,
-                        show_plot=True, filename=None, **kwargs):
+    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+                        cumulative_inset=True, show_plot=True, filename=None,
+                        **kwargs):
         """
         Plot the simple shift graph between two systems of types
 
@@ -343,7 +348,11 @@ class Shift:
         type_scores.reverse()
 
         # Get bar heights and colors
-        bar_heights = get_bar_heights(type_scores, abs(self.diff))
+        if normalize:
+            normalizer = abs(self.diff)
+        else:
+            normalizer = 1
+        bar_heights = get_bar_heights(type_scores, normalizer)
         bar_colors = get_bar_colors(type_scores, bar_heights, kwargs)
         # Initialize plot
         f,ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))

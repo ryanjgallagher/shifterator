@@ -25,7 +25,7 @@ def get_plotting_params(plotting_params):
         plotting_params['bar_linewidth'] = 0.25
     if 'score_colors' not in plotting_params:
         plotting_params['score_colors'] = ('#ffff80', '#FDFFD2', '#2f7cce',
-                                           '#C4CAFC', '#9E75B7', '#FECC5D')
+                                           '#C4CAFC', '#FECC5D', '#9E75B7')
     if 'alpha_fade' not in plotting_params:
         plotting_params['alpha_fade'] = 0.35
     if 'symbols' not in plotting_params:

@@ -2,6 +2,7 @@
 symmetric_shift.py
 
 TODO:
+- Capitalize shift classes  
 - Define options for reference value of JSD shift
 - Decide how to handle missing types in JSD shift
 - Change the axis / title labels for shifts
