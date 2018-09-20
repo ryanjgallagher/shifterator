@@ -103,13 +103,13 @@ def get_bar_heights(type_scores, normalizer):
                 heights_comp1.append(total_comp)
                 heights_comp2.append(0)
                 heights_subtract.append(comp2)
-                heights_alpha.append(comp1-total_comp)
+                heights_alpha.append(-1*comp2)
                 bar_ends.append(comp1)
             else:
                 heights_comp1.append(0)
                 heights_comp2.append(total_comp)
+                heights_alpha.append(-1*comp1)
                 heights_subtract.append(comp1)
-                heights_alpha.append(comp2-total_comp)
                 bar_ends.append(comp2)
     return (heights_comp1, heights_comp2, heights_alpha, heights_subtract,
             bottoms, bottoms_alpha, bar_ends)
@@ -149,13 +149,13 @@ def get_fade_bar_colors(bar_heights, comp_bar_colors):
     """
     """
     # Unpack bar heights
-    heights_c1, heights_c2, heights_alpha,_,_,_,_ = bar_heights
+    heights_c1,_,_,_,_,bottoms_alpha,_ = bar_heights
     # Get colors for how contributions cancel out
     bar_colors_alpha = []
     bar_colors_subtract = []
     for n in range(len(heights_c1)):
         # Check if heights_alpha takes away from heights_c1 or not
-        if abs(heights_alpha[n]+heights_c1[n]) > abs(heights_c2[n]):
+        if heights_c1[n] == bottoms_alpha[n]:
             bar_colors_alpha.append(comp_bar_colors[0][n])
             bar_colors_subtract.append(comp_bar_colors[1][n])
         else:
@@ -185,7 +185,7 @@ def plot_contributions(ax, bar_heights, bar_colors, plotting_params):
             color=colors_alpha, alpha=alpha, linewidth=0.25,
             edgecolor=edgecolor, zorder=10)
     ax.barh(ys, heights_subtract, 0.8, left=bms, align='center',
-            color=colors_subtract, alpha=0.35, linewidth=0.25,
+            color=colors_subtract, alpha=alpha, linewidth=0.25,
             edgecolor=edgecolor, zorder=10)
     return ax
 

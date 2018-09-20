@@ -304,9 +304,6 @@ class Shift:
             else:
                 neg_s_diff += p_avg*s_diff
 
-        #return (pos_freq_pos_score, pos_freq_neg_score,
-        #        neg_freq_pos_score, neg_freq_neg_score,
-        #        pos_s_diff, neg_s_diff)
         return (pos_freq_pos_score, neg_freq_pos_score,
                 pos_freq_neg_score, neg_freq_neg_score,
                 pos_s_diff, neg_s_diff)
