@@ -3,9 +3,7 @@
 The Shifterator package provides functionality for constructing **word shift graphs**, vertical bart charts that quantify *which* words contribute to a pairwise difference between two texts and *how* they contribute. By allowing you to look at changes in how words are used, word shifts help you to conduct analyses of sentiment, entropy, and divergence that are fundamentally more interpretable.
 
 <p align="center">
-<div style="text-align:center">
-  <img src ="https://github.com/ryanjgallagher/shifterator/blob/master/figures/presidential-speeches_smaller.png"/>
-  </div>
+  <img src ="https://github.com/ryanjgallagher/shifterator/blob/master/figures/presidential-speeches_smaller.png" width="400"/>
 </p>
 
 This code is still under development. Please open an issue on Github if you find any errors.
@@ -52,11 +50,11 @@ The contribution depends on the change in relative frequency of a word, the rela
 
 The first four types of contributions can stack with the later two types to yield 8 qualitatively different ways that a word can contribute in a word shift graph. In some cases, the direction of a word's score change may differ from the direction of the rest of its contribution, in which case we shade the bars to indicate the cancelling of the contributions.
 
+
 <p align="center">
-<div style="text-align:center">
-  <img src ="https://github.com/ryanjgallagher/shifterator/blob/master/figures/shift-components_smaller.png"/>
-  </div>
+  <img src ="https://github.com/ryanjgallagher/shifterator/blob/master/figures/shift-components_smaller.png" width="400"/>
 </p>
+
 
 Please see ["Temporal Patterns of Happiness and Information in a Global Social Network: Hedonometrics and Twitter"](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0026752) by Dodds et al. (2011) for a more detailed discussion of interpreting word shift graphs.
 
