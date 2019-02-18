@@ -3,7 +3,8 @@ helper.py
 
 Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
 
-
+TODO:
+- Allow different order entropies to be specified using alpha
 """
 import os
 import numpy as np
@@ -75,7 +76,7 @@ def filter_by_scores(type2freq, type2score, stop_lens):
 
     return (type2freq_new, type2score_new, stop_words)
 
-def get_score_dictionary(scores, delimiter=','):
+def get_score_dictionary(scores):
     """
     Loads a dictionary of type scores
 
@@ -89,8 +90,6 @@ def get_score_dictionary(scores, delimiter=','):
             Options: 'labMT_english'
     stop_lens: iteratble of 2-tuples
         denotes intervals that should be excluded when calculating shift scores
-    delimiter: str
-        delimiter used in the dictionary file
 
     Returns
     -------
@@ -111,7 +110,7 @@ def get_score_dictionary(scores, delimiter=','):
     type2score = {}
     with open(dict_file, 'r') as f:
         for line in f:
-            t,score = line.strip().split(delimiter)
+            t,score = line.strip().split('\t')
             type2score[t] = score
 
     return type2score

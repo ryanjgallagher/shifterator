@@ -30,7 +30,7 @@ from shifterator.plotting import *
 # ------------------------------------------------------------------------------
 class Shift:
     def __init__(self, system_1, system_2, type2score_1=None, type2score_2=None,
-                 reference_value=None, stop_lens=None, delimiter=','):
+                 reference_value=None, stop_lens=None):
         """
         Shift object for calculating weighted scores of two systems of types,
         and the shift between them
@@ -59,13 +59,13 @@ class Shift:
         self.type2freq_2 = system_2
         # Set type2score dictionaries
         if type2score_1 is not None and type2score_2 is not None:
-            self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
-            self.type2score_2 = get_score_dictionary(type2score_2, delimiter)
+            self.type2score_1 = get_score_dictionary(type2score_1)
+            self.type2score_2 = get_score_dictionary(type2score_2)
         elif type2score_1 is not None:
-            self.type2score_1 = get_score_dictionary(type2score_1, delimiter)
+            self.type2score_1 = get_score_dictionary(type2score_1)
             self.type2score_2 = self.type2score_1
         elif type2score_2 is not None:
-            self.type2score_2 = get_score_dictionary(type2score_2, delimiter)
+            self.type2score_2 = get_score_dictionary(type2score_2)
             self.type2score_1 = self.type2score_2
         else:
             self.type2score_1 = {t : 1 for t in self.type2freq_1}
