@@ -2,7 +2,6 @@
 relative_shift.py
 
 TODO:
-- Add proportions shift class
 - Capitalize shift classes
 - Add warning if KLD is not well-defined
 - Add option to get simple contributions for entropy, KLD, JSD (no breakdown)

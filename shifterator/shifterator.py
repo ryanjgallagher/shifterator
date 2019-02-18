@@ -84,10 +84,11 @@ class Shift:
         self.types = self.get_types(self.type2freq_1, self.type2score_1,
                                     self.type2freq_2, self.type2score_2)
         # Assume missing scores in each vocabulary (TODO: add options)
-        missing_scores_info = get_missing_scores(self.type2score_1, self.type2score_2)
-        self.type2score_1 = missing_scores_info[0]
-        self.type2score_2 = missing_scores_info[1]
-        self.missing_score_types = missing_scores_info[2]
+        #missing_scores_info = get_missing_scores(self.type2score_1, self.type2score_2)
+        #self.type2score_1 = missing_scores_info[0]
+        #self.type2score_2 = missing_scores_info[1]
+        #self.missing_score_types = missing_scores_info[2]
+        self.missing_score_types = set()
 
         # Set reference value
         if reference_value is not None:
@@ -115,10 +116,6 @@ class Shift:
         type2score: dict
             keys are types and values are scores
         """
-        # Enforce common score vocabulary
-        if len(set(type2score_1.keys()).difference(type2score_2.keys())) != 0:
-            warning = 'Score dictionaries do not share a common vocabulary.'
-            warnings.warn(warning, Warning)
         # Get observed types that are also in score dicts
         types_1 = set(type2freq_1.keys()).intersection(set(type2score_1.keys()))
         types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
@@ -145,8 +142,6 @@ class Shift:
         # Check we have a vocabulary to work with
         types = set(type2freq.keys()).intersection(set(type2score.keys()))
         if len(types) == 0:
-            warning = 'No types in the frequency dict appear in the score dict'
-            warnings.warn(warning, Warning)
             return
         # Get weighted score and total frequency
         f_total = sum([freq for t,freq in type2freq.items() if t in types])

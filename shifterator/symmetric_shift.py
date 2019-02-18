@@ -2,7 +2,7 @@
 symmetric_shift.py
 
 TODO:
-- Capitalize shift classes  
+- Capitalize shift classes
 - Define options for reference value of JSD shift
 - Decide how to handle missing types in JSD shift
 - Change the axis / title labels for shifts
@@ -19,6 +19,23 @@ from shifterator.helper import *
 # ------------------------------------------------------------------------------
 # -------------------------- Symmetric shift classes ---------------------------
 # ------------------------------------------------------------------------------
+class proportion_shift(shifterator.Shift):
+    """
+    """
+    def __init__(self, system_1, system_2, stop_lens=None):
+        # Set relative frequency to 0 for types that don't appear
+        types = set(system_1.keys()).union(system_2.keys())
+        for t in types:
+            if t not in system_1:
+                system_1[t] = 0
+            elif t not in system_2:
+                system_2[t] = 0
+        # Initialize shift object
+        shifterator.Shift.__init__(self, system_1=system_1, system_2=system_2,
+                                   type2score_1=None, type2score_2=None,
+                                   reference_value=0, step_lens=stop_lens,)
+
+
 class js_divergence_shift(shifterator.Shift):
     """
     Extra parameters: type of divergence (?), and alpha of entropy
