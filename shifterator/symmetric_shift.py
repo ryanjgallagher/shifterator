@@ -19,7 +19,7 @@ from shifterator.helper import *
 # ------------------------------------------------------------------------------
 # -------------------------- Symmetric shift classes ---------------------------
 # ------------------------------------------------------------------------------
-class proportion_shift(shifterator.Shift):
+class ProportionShift(shifterator.Shift):
     """
     """
     def __init__(self, system_1, system_2, stop_lens=None):
@@ -36,7 +36,7 @@ class proportion_shift(shifterator.Shift):
                                    reference_value=0, step_lens=stop_lens,)
 
 
-class js_divergence_shift(shifterator.Shift):
+class JSDivergenceShift(shifterator.Shift):
     """
     Extra parameters: type of divergence (?), and alpha of entropy
     """

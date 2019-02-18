@@ -2,7 +2,6 @@
 relative_shift.py
 
 TODO:
-- Capitalize shift classes
 - Add warning if KLD is not well-defined
 - Add option to get simple contributions for entropy, KLD, JSD (no breakdown)
 - Check reference and comparison are correct on the KLD shift
@@ -20,7 +19,7 @@ from shifterator.helper import *
 # ------------------------------------------------------------------------------
 # --------------------------- Relative shift classes ---------------------------
 # ------------------------------------------------------------------------------
-class relative_shift(shifterator.Shift):
+class RelativeShift(shifterator.Shift):
     def __init__(self, reference, comparison, type2score_ref=None,
                  type2score_comp=None, stop_lens=None, delimiter=','):
         """
@@ -53,7 +52,7 @@ class relative_shift(shifterator.Shift):
         self.type2score_comp = self.type2score_2
 
 
-class sentiment_shift(relative_shift):
+class SentimentShift(RelativeShift):
     def __init__(self, reference, comparison, sent_dict_ref='labMT_english',
                  sent_dict_comp=None, stop_lens=None, delimiter=','):
         """
@@ -77,10 +76,10 @@ class sentiment_shift(relative_shift):
             denotes intervals that should be excluded when calculating shift
             scores. Defaults to stop lens for labMT sentiment dictionary
         """
-        relative_shift.__init__(self, reference, comparison, sent_dict_ref,
-                                sent_dict_comp, stop_lens, delimiter)
+        RelativeShift.__init__(self, reference, comparison, sent_dict_ref,
+                               sent_dict_comp, stop_lens, delimiter)
 
-class entropy_shift(relative_shift):
+class EntropyShift(RelativeShift):
     """
 
     """
@@ -89,10 +88,10 @@ class entropy_shift(relative_shift):
         type2s_ref, type2s_comp = get_surprisal_scores(reference, comparison,
                                                        base=2, alpha=1)
         # Initialize shift
-        relative_shift.__init__(self, reference, comparison, type2s_ref,
-                                type2s_comp, stop_lens)
+        RelativeShift.__init__(self, reference, comparison, type2s_ref,
+                               type2s_comp, stop_lens)
 
-class kl_divergence_shift(relative_shift):
+class KLDivergenceShift(RelativeShift):
     """
 
     """
@@ -101,5 +100,5 @@ class kl_divergence_shift(relative_shift):
         type2s_ref, type2s_comp = get_surprisal_scores(reference, comparison,
                                                        base=2, alpha=1)
         # Initialize shift
-        relative_shift.__init__(self, comparison, comparison, type2s_ref,
-                                type2s_comp, stop_lens)
+        RelativeShift.__init__(self, comparison, comparison, type2s_ref,
+                               type2s_comp, stop_lens)
