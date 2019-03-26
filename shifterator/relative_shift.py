@@ -44,7 +44,7 @@ class RelativeShift(shifterator.Shift):
                                    type2score_1=type2score_ref,
                                    type2score_2=type2score_comp,
                                    stop_lens=stop_lens,
-                                   reference_value=referenve_value)
+                                   reference_value=reference_value)
         # Set new names for interpretability (takes up memory...)
         self.type2freq_ref = self.type2freq_1
         self.type2freq_comp = self.type2freq_2
