@@ -133,7 +133,7 @@ class KLDivergenceShift(RelativeShift):
         # Check that KLD is well defined
         reference_types = set(reference.keys())
         comparison_types = set(comparison.keys())
-        if if len(reference_types.symmetric_difference(comparison_types)) > 0:
+        if len(reference_types.symmetric_difference(comparison_types)) > 0:
             warning = 'There are types that appear in either the reference or'\
                       +'comparison but not the other: KL divergence is not'\
                       +'well defined'
