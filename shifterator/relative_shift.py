@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import shifterator.shifterator as shifterator
-from shifterator.helper import *
+from shifterator.shifterator.helper import *
 
 # ------------------------------------------------------------------------------
 # --------------------------- Relative shift classes ---------------------------
