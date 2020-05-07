@@ -1,4 +1,4 @@
-# Shifterator 
+# Shifterator
 
 The Shifterator package provides functionality for constructing **word shift graphs**, vertical bart charts that quantify *which* words contribute to a pairwise difference between two texts and *how* they contribute. By allowing you to look at changes in how words are used, word shifts help you to conduct analyses of sentiment, entropy, and divergence that are fundamentally more interpretable.
 
@@ -10,9 +10,9 @@ This code is still under development. Please open an issue on Github if you find
 
 ## Install
 
-Python code to produce shift graphs can be downloaded by cloning the repository through either the "Clone or download" button on Github or the command line.  
+Python code to produce shift graphs can be downloaded via pip.
 
-`git clone https://github.com/ryanjgallagher/shifterator.git`
+`pip install shifterator`
 
 ## Producing Word Shift Graphs  
 
@@ -26,9 +26,9 @@ For sentiment (or any other dictionary-based) analysis, one or two dictionaries 
 from shifterator import relative_shift as rs
 
 # Get a sentiment word shift
-sentiment_shift = rs.sentiment_shift(reference=word2freq_ref, 
+sentiment_shift = rs.sentiment_shift(reference=word2freq_ref,
                                      comparison=word2freq_comp
-                                     sent_dict_ref=word2score_ref, 
+                                     sent_dict_ref=word2score_ref,
                                      sent_dict_comp=word2score_comp)
 sentiment_shift.get_shift_graph()
 
@@ -65,13 +65,13 @@ Relative word shifts can also be constructed from Shannon's entropy and the Kull
 
 ### Entropy and Kullback-Leibler Divergence Shifts
 
-For entropy shifts and Kullback-Leibler divergence shifts, only word frequencies need to be provided to Shifterator. 
+For entropy shifts and Kullback-Leibler divergence shifts, only word frequencies need to be provided to Shifterator.
 
 **Note**, the Kullback-Leibler divergence is only well-defined if both texts have *exactly* all the same words. If this is not the case, then you should consider using a Jensen-Shannon divergence shift.
 
 ```python
 # Get an entropy shift
-entropy_shift = rs.entropy_shift(reference=type2freq_ref, 
+entropy_shift = rs.entropy_shift(reference=type2freq_ref,
                                  comparison=type2freq_comp,
                                  base=2
 entropy_shift.get_shift_graph()
@@ -91,7 +91,7 @@ The Jensen-Shannon divergence symmetrizes the Kullback-Leibler divergence by mea
 ```python
 # Get a Jensen-Shannon divergence shift
 from shifterator import symmetric_shift as ss
-jsd_shift = ss.js_divergence_shift(system_1=word2freq_1, 
+jsd_shift = ss.js_divergence_shift(system_1=word2freq_1,
                                    system_2=word2freq_2,
                                    base=2)
 jsd_shift.get_shift_graph()
@@ -117,7 +117,7 @@ shift = sh.Shift(system_1=type2freq_1,
 
 ### Calculating Weighted Scores
 
-Given a Shift object, a weighted score can be quickly calculated via the `get_weighted_score()` function. If you only need a weighted score, you do not need to specify the word frequencies and dictionary ahead of time. 
+Given a Shift object, a weighted score can be quickly calculated via the `get_weighted_score()` function. If you only need a weighted score, you do not need to specify the word frequencies and dictionary ahead of time.
 
 ```python
 # Get a weighted average using a Shift object
@@ -169,7 +169,7 @@ For relative shifts, the weighted average of the reference text is automatically
 
 ```python
 # Manually set reference value on a Shift object
-jsd_shift = ss.js_divergence_shift(system_1=word2freq_1, 
+jsd_shift = ss.js_divergence_shift(system_1=word2freq_1,
                                    system_2=word2freq_2,
                                    reference_value=0)
 ```
