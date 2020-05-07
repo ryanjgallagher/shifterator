@@ -31,12 +31,21 @@ class ProportionShift(shifterator.Shift):
         # Initialize shift object
         shifterator.Shift.__init__(self, system_1=system_1, system_2=system_2,
                                    type2score_1=None, type2score_2=None,
-                                   reference_value=0, step_lens=stop_lens,)
+                                   reference_value=0, stop_lens=stop_lens,)
+
+    def get_shift_graph(self, top_n=50, normalize=False, text_size_inset=True,
+                        cumulative_inset=True, show_plot=True, filename=None,
+                        detailed=False, **kwargs):
+        shifterator.Shift.get_shift_graph(self, top_n=top_n, normalize=normalize,
+                                          text_size_inset=text_size_inset,
+                                          cumulative_inset=cumulative_inset,
+                                          show_plot=show_plot, filename=filename,
+                                          detailed=detailed, **kwargs)
 
 
 class JSDivergenceShift(shifterator.Shift):
     """
-    Extra parameters: alpha of entropy
+
     """
     def __init__(self, system_1, system_2, base=2, weight_1=0.5, weight_2=0.5,
                  alpha=1, stop_lens=None):
@@ -50,3 +59,13 @@ class JSDivergenceShift(shifterator.Shift):
                                    type2score_1=type2score_1,
                                    type2score_2=type2score_2,
                                    reference_value=0, stop_lens=stop_lens)
+
+    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+                        cumulative_inset=True, show_plot=True, filename=None,
+                        detailed=False, show_total=False, **kwargs):
+        shifterator.Shift.get_shift_graph(self, top_n=top_n, normalize=normalize,
+                                          text_size_inset=text_size_inset,
+                                          cumulative_inset=cumulative_inset,
+                                          show_plot=show_plot, filename=filename,
+                                          detailed=detailed, show_total=show_total,
+                                          **kwargs)

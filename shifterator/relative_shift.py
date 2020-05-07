@@ -111,7 +111,16 @@ class EntropyShift(RelativeShift):
                 type2s_comp[t] = 0
         # Initialize shift
         RelativeShift.__init__(self, reference, comparison, type2s_ref,
-                               type2s_comp, stop_lens, reference_value)
+                               type2s_comp, stop_lens, reference_value=0)
+
+    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+                        cumulative_inset=True, show_plot=True, filename=None,
+                        detailed=False, **kwargs):
+        RelativeShift.get_shift_graph(self, top_n=top_n, normalize=normalize,
+                                      text_size_inset=text_size_inset,
+                                      cumulative_inset=cumulative_inset,
+                                      show_plot=show_plot, filename=filename,
+                                      detailed=detailed, **kwargs)
 
 class KLDivergenceShift(RelativeShift):
     """
@@ -145,3 +154,12 @@ class KLDivergenceShift(RelativeShift):
         # Initialize shift
         RelativeShift.__init__(self, comparison, comparison, type2s_ref,
                                type2s_comp, stop_lens, reference_value=0)
+
+    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+                        cumulative_inset=True, show_plot=True, filename=None,
+                        detailed=False, **kwargs):
+        RelativeShift.get_shift_graph(self, top_n=top_n, normalize=normalize,
+                                      text_size_inset=text_size_inset,
+                                      cumulative_inset=cumulative_inset,
+                                      show_plot=show_plot, filename=filename,
+                                      detailed=detailed, **kwargs)

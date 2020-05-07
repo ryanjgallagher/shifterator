@@ -61,15 +61,19 @@ class Shift:
         if type2score_1 is not None and type2score_2 is not None:
             self.type2score_1 = get_score_dictionary(type2score_1)
             self.type2score_2 = get_score_dictionary(type2score_2)
+            self.show_score_diffs = True
         elif type2score_1 is not None:
             self.type2score_1 = get_score_dictionary(type2score_1)
             self.type2score_2 = self.type2score_1
+            self.show_score_diffs = False
         elif type2score_2 is not None:
             self.type2score_2 = get_score_dictionary(type2score_2)
             self.type2score_1 = self.type2score_2
+            self.show_score_diffs = False
         else:
             self.type2score_1 = {t : 1 for t in self.type2freq_1}
             self.type2score_2 = {t : 1 for t in self.type2freq_2}
+            self.show_score_diffs = False
         # Filter type dictionaries by stop lense
         self.stop_lens = stop_lens
         if stop_lens is not None:
@@ -303,30 +307,32 @@ class Shift:
                 'neg_s_pos_p': neg_s_pos_p, 'neg_s_neg_p': neg_s_neg_p,
                 'pos_s': pos_s, 'neg_s': neg_s}
 
-    def get_shift_graph(self, top_n=50, detailed=True, show_total=True,
-                        normalize=True, text_size_inset=True, cumulative_inset=True,
-                        show_plot=True, show_score_diffs=True, filename=None, **kwargs):
+    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+                        cumulative_inset=True, show_plot=True, filename=None,
+                        **kwargs):
         """
         Plot the shift graph between two systems of types
 
         Parameters
         ----------
         top_n: int
-            display the top_n types as sorted by their absolute contribution to
+            Display the top_n types as sorted by their absolute contribution to
             the difference between systems
         cumulative_inset, text_size_inset: bool
-            whether to show insets showing the cumulative contribution to the
+            Whether to show insets showing the cumulative contribution to the
             shift by ranked types, and the relative sizes of each system
         show_plot: bool
-            whether to show plot on finish
+            Whether to show plot on finish
+        filename: str
+            If not None, name of the file for saving the word shift graph
 
         Returns
         -------
         ax
-            matplotlib ax of shift graph. Displays shift graph if show_plot=True
+            Matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
         # Set plotting parameters
-        kwargs = get_plot_params(kwargs, detailed, show_total, show_score_diffs)
+        kwargs = get_plot_params(kwargs, self.show_score_diffs)
 
         # Get type score components
         if self.type2shift_score is None:
@@ -351,14 +357,14 @@ class Shift:
         f,ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
         ax.margins(kwargs['y_margin'])
         # Plot type contributions
-        ax = plot_contributions(ax, top_n, bar_dims, bar_colors, kwargs, detailed)
+        ax = plot_contributions(ax, top_n, bar_dims, bar_colors, kwargs)
         # Plot total sum contributions
         max_bar_height = np.max(np.abs(bar_dims['label_heights']))
         total_comp_sums = self.get_shift_component_sums()
-        ax,comp_bar_heights,bar_order = plot_total_contribution_sums(ax, total_comp_sums, top_n,
-                                                                     max_bar_height, kwargs,
-                                                                     detailed, show_total,
-                                                                     show_score_diffs)
+        bar_order = get_bar_order(kwargs)
+        ax,comp_bar_heights,bar_order = plot_total_contribution_sums(ax, total_comp_sums,
+                                                                     bar_order, top_n,
+                                                                     max_bar_height, kwargs)
 
         # Get labels for bars
         type_labels = [t for (t,_,_,_,_,_) in type_scores]
@@ -372,21 +378,21 @@ class Shift:
         # Set font type
         if kwargs['serif']:
             set_serif()
-        if detailed:
+        if kwargs['detailed']:
             ax = set_bar_labels(f, ax, top_n, labels, bar_dims['label_heights'],
-                                comp_bar_heights, kwargs, show_total)
+                                comp_bar_heights, kwargs)
         else:
             ax = set_bar_labels(f, ax, top_n, labels, bar_dims['total_heights'],
-                                comp_bar_heights, kwargs, show_total)
+                                comp_bar_heights, kwargs)
 
         # Add center dividing line
         y_min,y_max = ax.get_ylim()
-        ax.plot([0,0],[1,y_max], '-', color='black', linewidth=0.7, zorder=20)
+        ax.plot([0,0],[1,y_max], '-', color='black', linewidth=1.0, zorder=20)
         # Add dividing line between words and component bars
         x_min,x_max = ax.get_xlim()
         ax.plot([x_min,x_max], [top_n+1,top_n+1], '-', color='black',
                  linewidth=0.7)
-        if show_total:
+        if kwargs['show_total']:
             ax.plot([x_min,x_max], [top_n+2.75, top_n+2.75], '-', color='black',
                     linewidth=0.5)
 

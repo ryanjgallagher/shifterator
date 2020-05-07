@@ -14,7 +14,13 @@ TODO:
 import numpy as np
 from matplotlib import rcParams
 
-def get_plot_params(plot_params, detailed, show_total, show_score_diffs):
+def get_plot_params(plot_params, show_score_diffs):
+    if 'detailed' not in plot_params:
+        plot_params['detailed'] = True
+    if 'show_total' not in plot_params:
+        plot_params['show_total'] = True
+    if 'show_score_diffs' not in plot_params:
+        plot_params['show_score_diffs'] = show_score_diffs
     if 'width' not in plot_params:
         plot_params['width'] = 7
     if 'height' not in plot_params:
@@ -165,7 +171,7 @@ def get_bar_colors(type_scores, plot_params):
 
     return bar_colors
 
-def plot_contributions(ax, top_n, bar_dims, bar_colors, plot_params, detailed):
+def plot_contributions(ax, top_n, bar_dims, bar_colors, plot_params):
     """
     """
     # Set plotting params
@@ -174,7 +180,7 @@ def plot_contributions(ax, top_n, bar_dims, bar_colors, plot_params, detailed):
     width = plot_params['bar_width']
     linewidth = plot_params['bar_linewidth']
     edgecolor = ['black'] * top_n # hack b/c matplotlib has a bug
-    if detailed:
+    if plot_params['detailed']:
         # Plot the p_diff and s_diff solid contributions
         ax.barh(ys, bar_dims['p_solid_heights'], width, align='center', zorder=10,
                 color=bar_colors['p'], edgecolor=edgecolor, linewidth=linewidth)
@@ -195,40 +201,71 @@ def plot_contributions(ax, top_n, bar_dims, bar_colors, plot_params, detailed):
 
     return ax
 
-def plot_total_contribution_sums(ax, total_comp_sums, top_n, max_bar_height,
-                                 plot_params, detailed, show_total, show_score_diffs):
-    # Get contribution bars
-    if detailed:
-        if show_score_diffs:
+def get_bar_order(plot_params):
+    if plot_params['detailed']:
+        if plot_params['show_score_diffs']:
             bar_order = ['neg_s', 'pos_s', 'neg_s_neg_p', 'neg_s_pos_p',
                          'pos_s_neg_p', 'pos_s_pos_p']
         else:
             bar_order = ['neg_s_neg_p', 'neg_s_pos_p', 'pos_s_neg_p', 'pos_s_pos_p']
-        comp_bar_heights = [total_comp_sums[b] for b in bar_order]
     else:
         bar_order = ['neg_total', 'pos_total']
-        comp_bar_heights = []
-        for b in bar_order:
-            if b == 'neg_total':
-                h = total_comp_sums['neg_s'] + total_comp_sums['neg_s_pos_p'] +\
-                    total_comp_sums['pos_s_neg_p']
-                comp_bar_heights.append(h)
-            else:
-                h = total_comp_sums['pos_s'] + total_comp_sums['neg_s_neg_p'] +\
-                    total_comp_sums['pos_s_pos_p']
-                comp_bar_heights.append(h)
-    # Get total sum bar
-    if show_total:
-        total = sum(comp_bar_heights)
-        comp_bar_heights = [total] + comp_bar_heights
+
+    if plot_params['show_total']:
         bar_order = ['total'] + bar_order
+
+    return bar_order
+
+def plot_total_contribution_sums(ax, total_comp_sums, bar_order, top_n,
+                                 max_bar_height, plot_params):
+    # Get contribution bars
+    comp_bar_heights = []
+    for b in bar_order:
+        if b == 'total':
+            h = 0
+        elif b == 'neg_total':
+            h = total_comp_sums['neg_s'] + total_comp_sums['neg_s_pos_p'] +\
+                total_comp_sums['pos_s_neg_p']
+        elif b == 'pos_total':
+            h = total_comp_sums['pos_s'] + total_comp_sums['neg_s_neg_p'] +\
+                total_comp_sums['pos_s_pos_p']
+        else:
+            h = total_comp_sums[b]
+
+        comp_bar_heights.append(h)
+
+    # if detailed:
+    #     if show_score_diffs:
+    #         bar_order = ['neg_s', 'pos_s', 'neg_s_neg_p', 'neg_s_pos_p',
+    #                      'pos_s_neg_p', 'pos_s_pos_p']
+    #     else:
+    #         bar_order = ['neg_s_neg_p', 'neg_s_pos_p', 'pos_s_neg_p', 'pos_s_pos_p']
+    #     comp_bar_heights = [total_comp_sums[b] for b in bar_order]
+    # else:
+    #     bar_order = ['neg_total', 'pos_total']
+    #     comp_bar_heights = []
+    #     for b in bar_order:
+    #         if b == 'neg_total':
+    #             h = total_comp_sums['neg_s'] + total_comp_sums['neg_s_pos_p'] +\
+    #                 total_comp_sums['pos_s_neg_p']
+    #             comp_bar_heights.append(h)
+    #         else:
+    #             h = total_comp_sums['pos_s'] + total_comp_sums['neg_s_neg_p'] +\
+    #                 total_comp_sums['pos_s_pos_p']
+    #             comp_bar_heights.append(h)
+    # Get total sum bar
+
+    if 'total' in bar_order:
+        total_index = bar_order.index('total')
+        total = sum(comp_bar_heights)
+        comp_bar_heights[total_index] = total
     # Rescacle bars
     comp_scaling = max_bar_height / np.max(np.abs(comp_bar_heights))
     #comp_scaling = max_bar_height / abs(comp_bar_heights[np.argmax(comp_bar_heights)])
     comp_bar_heights = [comp_scaling * h for h in comp_bar_heights]
 
     # Get bar ys
-    if show_total:
+    if plot_params['show_total']:
         min_y = top_n + 3.5
         ys = [top_n + 2]
     else:
@@ -255,14 +292,14 @@ def get_bar_type_space(ax, plot_params):
     return bar_type_space
 
 def set_bar_labels(f, ax, top_n, type_labels, full_bar_heights, comp_bar_heights,
-                   plot_params, show_total):
+                   plot_params):
     # Put together all bar heights
     n = len(full_bar_heights)
     all_bar_ends = full_bar_heights + comp_bar_heights
     # Estimate bar_type_space as a fraction of largest xlim
     bar_type_space = get_bar_type_space(ax, plot_params)
     # Get heights of all bars
-    if show_total:
+    if plot_params['show_total']:
         min_y = top_n + 3.5
         top_heights = [top_n + 2]
     else:
