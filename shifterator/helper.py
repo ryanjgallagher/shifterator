@@ -153,8 +153,16 @@ def get_type_surprisals(type2p, base=2, alpha=1):
     type2surprise = {t : -1*log(p, base) for t,p in type2p.items()}
     return type2surprise
 
-def get_type_logs(type2p, base=2, alpha=1):
-    type2log = {t : log(p, base) for t,p in type2p.items()}
+def get_type_logs(type2p, base=2, alpha=1, force_zero=False):
+    type2log = dict()
+    for t,p in type2p.items():
+        try:
+            type2log[t] = log(p, base)
+        except ValueError:
+            if force_zero:
+                type2log[t] = 0
+            else:
+                raise
     return type2log
 
 def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
@@ -164,7 +172,7 @@ def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
     # Get surprisal of each type
     type2surprisal_1 = get_type_surprisals(type2p_1, base=base, alpha=alpha)
     type2surprisal_2 = get_type_surprisals(type2p_2, base=base, alpha=alpha)
-    return type2surprisal_1, type2surprisal_2
+    return type2p_1, type2p_2, type2surprisal_1, type2surprisal_2
 
 def get_jsd_scores(type2freq_1, type2freq_2, base=2, alpha=1, weight_1=0.5,
                    weight_2=0.5):
@@ -174,12 +182,14 @@ def get_jsd_scores(type2freq_1, type2freq_2, base=2, alpha=1, weight_1=0.5,
     # Get mixed distribution
     type2m = get_mixed_distribution(type2p, type2q, p=weight_1, q=weight_2)
     # Get surprisal of each type
-    type2log_p = get_type_logs(type2p, base=base, alpha=alpha)
-    type2log_q = get_type_logs(type2q, base=base, alpha=alpha)
+    # Forcing zero should be OK, by formula anything that has a 0 should be 0
+    #   in the end when multiplied against its 0 frequency, i.e. 0 * log 0 = 0
+    type2log_p = get_type_logs(type2p, base=base, alpha=alpha, force_zero=True)
+    type2log_q = get_type_logs(type2q, base=base, alpha=alpha, force_zero=True)
     type2log_m = get_type_logs(type2m, base=base, alpha=alpha)
     # Get scores (handle missing types)
     type2score_1 = {t : 0.5*(type2log_m[t] - type2log_p[t])
                     if t in type2log_p else 0 for t in type2log_m}
     type2score_2 = {t : 0.5*(type2log_q[t] - type2log_m[t])
                     if t in type2log_q else 0 for t in type2log_m}
-    return type2score_1, type2score_2
+    return type2p,type2q,type2m,type2score_1,type2score_2

@@ -350,7 +350,7 @@ class Shift:
             norm = abs(self.diff)
         else:
             norm = 1
-        bar_dims = get_bar_dims(type_scores, norm)
+        bar_dims = get_bar_dims(type_scores, norm, kwargs)
         bar_colors = get_bar_colors(type_scores, kwargs)
 
         # Initialize plot
@@ -359,13 +359,11 @@ class Shift:
         # Plot type contributions
         ax = plot_contributions(ax, top_n, bar_dims, bar_colors, kwargs)
         # Plot total sum contributions
-        max_bar_height = np.max(np.abs(bar_dims['label_heights']))
         total_comp_sums = self.get_shift_component_sums()
         bar_order = get_bar_order(kwargs)
         ax,comp_bar_heights,bar_order = plot_total_contribution_sums(ax, total_comp_sums,
                                                                      bar_order, top_n,
-                                                                     max_bar_height, kwargs)
-
+                                                                     bar_dims, kwargs)
         # Get labels for bars
         type_labels = [t for (t,_,_,_,_,_) in type_scores]
         # Add indicator if type borrwed a score
@@ -410,7 +408,9 @@ class Shift:
         # Set axis labels and title
         ax.set_xlabel(kwargs['xlabel'], fontsize=kwargs['xlabel_fontsize'])
         ax.set_ylabel(kwargs['ylabel'], fontsize=kwargs['ylabel_fontsize'])
-        if 'title' not in kwargs:
+        if kwargs['all_pos_contributions'] and 'title' not in kwargs:
+            kwargs['title'] = ''
+        elif 'title' not in kwargs:
             s_avg_1 = self.get_weighted_score(self.type2freq_1,self.type2score_1)
             s_avg_2 = self.get_weighted_score(self.type2freq_2,self.type2score_2)
             title = r'$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(1)}=$'+'{0:.2f}'\

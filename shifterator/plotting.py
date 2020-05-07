@@ -21,6 +21,8 @@ def get_plot_params(plot_params, show_score_diffs):
         plot_params['show_total'] = True
     if 'show_score_diffs' not in plot_params:
         plot_params['show_score_diffs'] = show_score_diffs
+    if 'all_pos_contributions' not in plot_params:
+        plot_params['all_pos_contributions'] = False
     if 'width' not in plot_params:
         plot_params['width'] = 7
     if 'height' not in plot_params:
@@ -38,6 +40,8 @@ def get_plot_params(plot_params, show_score_diffs):
                                        'neg_s': '#9E75B7',
                                        'pos_total': '#FFFF80',
                                        'neg_total': '#C4CAFC',
+                                       'all_pos_pos': '#FFFF80',
+                                       'all_pos_neg': '#C4CAFC',
                                        'total': '#707070'}
     if 'alpha_fade' not in plot_params:
         plot_params['alpha_fade'] = 0.35
@@ -50,6 +54,8 @@ def get_plot_params(plot_params, show_score_diffs):
                                   'neg_s': u'\u25BD',
                                   'pos_total': '',
                                   'neg_total': '',
+                                  'all_pos_pos': '',#'Sys. 1',
+                                  'all_pos_neg': '',#'Sys. 2',
                                   'total': r'$\Sigma$'}
     if 'missing_symbol' not in plot_params:
         plot_params['missing_symbol'] = '*'
@@ -94,7 +100,7 @@ def set_serif():
     rcParams['font.family'] = 'serif'
     rcParams['mathtext.fontset'] = 'dejavuserif'
 
-def get_bar_dims(type_scores, norm):
+def get_bar_dims(type_scores, norm, plot_params):
     """
 
     """
@@ -110,13 +116,21 @@ def get_bar_dims(type_scores, norm):
     for (_,p_diff,s_diff,p_avg,s_ref_diff,_) in type_scores:
         c_p = 100 * p_diff * s_ref_diff / norm
         c_s = 100 * p_avg * s_diff / norm
-        dims['total_heights'].append(c_p + c_s)
+        # This is for JSD to make bars face different directions based on p
+        # p_diff is p_2 - p_1, so point to right if p_1 > p_2
+        if not plot_params['all_pos_contributions'] or p_diff < 0:
+            dims['total_heights'].append(c_p + c_s)
+        else:
+            dims['total_heights'].append(-1 * (c_p + c_s))
         # Determine if direction of comp bars are congruent
         if np.sign(s_ref_diff * p_diff) * np.sign(s_diff) == 1:
             dims['p_solid_heights'].append(c_p)
             dims['s_solid_bases'].append(c_p)
             dims['s_solid_heights'].append(c_s)
-            dims['label_heights'].append(c_p + c_s)
+            if not plot_params['all_pos_contributions'] or p_diff < 0:
+                dims['label_heights'].append(c_p + c_s)
+            else:
+                dims['label_heights'].append(-1 * (c_p + c_s))
             for d in ['p_fade_bases', 'p_fade_heights', 's_fade_bases', 's_fade_heights']:
                 dims[d] .append(0)
         else:
@@ -125,7 +139,10 @@ def get_bar_dims(type_scores, norm):
                 dims['p_fade_bases'].append(c_p + c_s)
                 dims['p_fade_heights'].append(-1 * c_s)
                 dims['s_fade_heights'].append(c_s)
-                dims['label_heights'].append(c_p)
+                if not plot_params['all_pos_contributions'] or p_diff < 0:
+                    dims['label_heights'].append(c_p)
+                else:
+                    dims['label_heights'].append(-1 * c_p)
                 for d in ['s_solid_bases', 's_solid_heights', 's_fade_bases']:
                     dims[d].append(0)
             else:
@@ -133,7 +150,10 @@ def get_bar_dims(type_scores, norm):
                 dims['p_fade_heights'].append(c_p)
                 dims['s_fade_bases'].append(c_s + c_p)
                 dims['s_fade_heights'].append(-1 * c_p)
-                dims['label_heights'].append(c_s)
+                if not plot_params['all_pos_contributions'] or p_diff < 0:
+                    dims['label_heights'].append(c_s)
+                else:
+                    dims['label_heights'].append(-1 * c_s)
                 for d in ['p_solid_heights', 's_solid_bases', 'p_fade_bases']:
                     dims[d].append(0)
 
@@ -148,10 +168,16 @@ def get_bar_colors(type_scores, plot_params):
     for (_,p_diff,s_diff,p_avg,s_ref_diff,_) in type_scores:
         c_total = p_diff * s_ref_diff + p_avg * s_diff
         # Get total contribution colors
-        if c_total > 0:
-            bar_colors['total'].append(score_colors['pos_total'])
+        if not plot_params['all_pos_contributions']:
+            if c_total > 0:
+                bar_colors['total'].append(score_colors['pos_total'])
+            else:
+                bar_colors['total'].append(score_colors['neg_total'])
         else:
-            bar_colors['total'].append(score_colors['neg_total'])
+            if p_diff < 0:
+                bar_colors['total'].append(score_colors['all_pos_pos'])
+            else:
+                bar_colors['total'].append(score_colors['all_pos_neg'])
         # Get p_diff * s_ref_diff comp colors
         if s_ref_diff > 0:
             if p_diff > 0:
@@ -209,15 +235,18 @@ def get_bar_order(plot_params):
         else:
             bar_order = ['neg_s_neg_p', 'neg_s_pos_p', 'pos_s_neg_p', 'pos_s_pos_p']
     else:
-        bar_order = ['neg_total', 'pos_total']
+        if not plot_params['all_pos_contributions']:
+            bar_order = ['neg_total', 'pos_total']
+        else:
+            bar_order = ['all_pos_pos', 'all_pos_neg']
 
     if plot_params['show_total']:
         bar_order = ['total'] + bar_order
 
     return bar_order
 
-def plot_total_contribution_sums(ax, total_comp_sums, bar_order, top_n,
-                                 max_bar_height, plot_params):
+def plot_total_contribution_sums(ax, total_comp_sums, bar_order, top_n, bar_dims,
+                                 plot_params):
     # Get contribution bars
     comp_bar_heights = []
     for b in bar_order:
@@ -229,39 +258,27 @@ def plot_total_contribution_sums(ax, total_comp_sums, bar_order, top_n,
         elif b == 'pos_total':
             h = total_comp_sums['pos_s'] + total_comp_sums['neg_s_neg_p'] +\
                 total_comp_sums['pos_s_pos_p']
+        elif b == 'all_pos_pos':
+            a = np.array(bar_dims['total_heights'])
+            h = np.sum(a[a > 0])
+        elif b == 'all_pos_neg':
+            a = np.array(bar_dims['total_heights'])
+            h = np.sum(a[a < 0])
         else:
             h = total_comp_sums[b]
 
         comp_bar_heights.append(h)
-
-    # if detailed:
-    #     if show_score_diffs:
-    #         bar_order = ['neg_s', 'pos_s', 'neg_s_neg_p', 'neg_s_pos_p',
-    #                      'pos_s_neg_p', 'pos_s_pos_p']
-    #     else:
-    #         bar_order = ['neg_s_neg_p', 'neg_s_pos_p', 'pos_s_neg_p', 'pos_s_pos_p']
-    #     comp_bar_heights = [total_comp_sums[b] for b in bar_order]
-    # else:
-    #     bar_order = ['neg_total', 'pos_total']
-    #     comp_bar_heights = []
-    #     for b in bar_order:
-    #         if b == 'neg_total':
-    #             h = total_comp_sums['neg_s'] + total_comp_sums['neg_s_pos_p'] +\
-    #                 total_comp_sums['pos_s_neg_p']
-    #             comp_bar_heights.append(h)
-    #         else:
-    #             h = total_comp_sums['pos_s'] + total_comp_sums['neg_s_neg_p'] +\
-    #                 total_comp_sums['pos_s_pos_p']
-    #             comp_bar_heights.append(h)
-    # Get total sum bar
 
     if 'total' in bar_order:
         total_index = bar_order.index('total')
         total = sum(comp_bar_heights)
         comp_bar_heights[total_index] = total
     # Rescacle bars
+    if not plot_params['all_pos_contributions']:
+        max_bar_height = np.max(np.abs(bar_dims['label_heights']))
+    else:
+        max_bar_height = np.max(np.abs(bar_dims['total_heights']))
     comp_scaling = max_bar_height / np.max(np.abs(comp_bar_heights))
-    #comp_scaling = max_bar_height / abs(comp_bar_heights[np.argmax(comp_bar_heights)])
     comp_bar_heights = [comp_scaling * h for h in comp_bar_heights]
 
     # Get bar ys
@@ -355,7 +372,10 @@ def adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs, bar_type_space
 
 def set_ticks(ax, top_n, plot_params):
     # Make xticks larger
-    x_ticks = ['{:.1f}'.format(t) for t in ax.get_xticks()]
+    if not plot_params['all_pos_contributions']:
+        x_ticks = ['{:.1f}'.format(t) for t in ax.get_xticks()]
+    else:
+        x_ticks = ['{:.1f}'.format(abs(t)) for t in ax.get_xticks()]
     ax.set_xticklabels(x_ticks, fontsize=plot_params['xtick_fontsize'])
     # Flip y-axis tick labels and make sure every 5th tick is labeled
     y_ticks = list(range(1,top_n,5))+[top_n]

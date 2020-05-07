@@ -100,8 +100,9 @@ class EntropyShift(RelativeShift):
     """
     def __init__(self, reference, comparison, base=2, stop_lens=None):
         # Get surprisal scores
-        type2s_ref, type2s_comp = get_surprisal_scores(reference, comparison,
-                                                       base=2, alpha=1)
+        type2p_ref,type2p_comp,type2s_ref,type2s_comp = get_surprisal_scores(reference,
+                                                                             comparison,
+                                                                             base=2, alpha=1)
         # Set zero surprisal scores for types that do not appear
         types = set(type2s_ref.keys()).union(set(type2s_comp.keys()))
         for t in types:
@@ -112,6 +113,8 @@ class EntropyShift(RelativeShift):
         # Initialize shift
         RelativeShift.__init__(self, reference, comparison, type2s_ref,
                                type2s_comp, stop_lens, reference_value=0)
+        self.type2p_ref = type2p_ref
+        self.type2p_comp = type2p_comp
 
     def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
                         cumulative_inset=True, show_plot=True, filename=None,
@@ -149,11 +152,14 @@ class KLDivergenceShift(RelativeShift):
             warnings.warn(warning, Warning)
             return
         # Get surprisal scores
-        type2s_ref, type2s_comp = get_surprisal_scores(reference, comparison,
-                                                       base=2, alpha=1)
+        type2p_ref,type2p_comp,type2s_ref,type2s_comp = get_surprisal_scores(reference,
+                                                                             comparison,
+                                                                             base=2, alpha=1)
         # Initialize shift
         RelativeShift.__init__(self, comparison, comparison, type2s_ref,
                                type2s_comp, stop_lens, reference_value=0)
+        self.type2p_ref = type2p_ref
+        self.type2p_comp = type2p_comp
 
     def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
                         cumulative_inset=True, show_plot=True, filename=None,
