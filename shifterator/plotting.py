@@ -54,8 +54,8 @@ def get_plot_params(plot_params, show_score_diffs):
                                   'neg_s': u'\u25BD',
                                   'pos_total': '',
                                   'neg_total': '',
-                                  'all_pos_pos': '',#'Sys. 1',
-                                  'all_pos_neg': '',#'Sys. 2',
+                                  'all_pos_pos': 'Sys. 1',
+                                  'all_pos_neg': 'Sys. 2',
                                   'total': r'$\Sigma$'}
     if 'missing_symbol' not in plot_params:
         plot_params['missing_symbol'] = '*'
@@ -127,10 +127,7 @@ def get_bar_dims(type_scores, norm, plot_params):
             dims['p_solid_heights'].append(c_p)
             dims['s_solid_bases'].append(c_p)
             dims['s_solid_heights'].append(c_s)
-            if not plot_params['all_pos_contributions'] or p_diff < 0:
-                dims['label_heights'].append(c_p + c_s)
-            else:
-                dims['label_heights'].append(-1 * (c_p + c_s))
+            dims['label_heights'].append(c_p + c_s)
             for d in ['p_fade_bases', 'p_fade_heights', 's_fade_bases', 's_fade_heights']:
                 dims[d] .append(0)
         else:
@@ -139,10 +136,7 @@ def get_bar_dims(type_scores, norm, plot_params):
                 dims['p_fade_bases'].append(c_p + c_s)
                 dims['p_fade_heights'].append(-1 * c_s)
                 dims['s_fade_heights'].append(c_s)
-                if not plot_params['all_pos_contributions'] or p_diff < 0:
-                    dims['label_heights'].append(c_p)
-                else:
-                    dims['label_heights'].append(-1 * c_p)
+                dims['label_heights'].append(c_p)
                 for d in ['s_solid_bases', 's_solid_heights', 's_fade_bases']:
                     dims[d].append(0)
             else:
@@ -150,10 +144,7 @@ def get_bar_dims(type_scores, norm, plot_params):
                 dims['p_fade_heights'].append(c_p)
                 dims['s_fade_bases'].append(c_s + c_p)
                 dims['s_fade_heights'].append(-1 * c_p)
-                if not plot_params['all_pos_contributions'] or p_diff < 0:
-                    dims['label_heights'].append(c_s)
-                else:
-                    dims['label_heights'].append(-1 * c_s)
+                dims['label_heights'].append(c_s)
                 for d in ['p_solid_heights', 's_solid_bases', 'p_fade_bases']:
                     dims[d].append(0)
 
