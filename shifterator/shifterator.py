@@ -84,11 +84,11 @@ class Shift:
         self.types = self.get_types(self.type2freq_1, self.type2score_1,
                                     self.type2freq_2, self.type2score_2)
         # Assume missing scores in each vocabulary (TODO: add options)
-        #missing_scores_info = get_missing_scores(self.type2score_1, self.type2score_2)
-        #self.type2score_1 = missing_scores_info[0]
-        #self.type2score_2 = missing_scores_info[1]
-        #self.missing_score_types = missing_scores_info[2]
-        self.missing_score_types = set()
+        missing_scores_info = get_missing_scores(self.type2score_1, self.type2score_2)
+        self.type2score_1 = missing_scores_info[0]
+        self.type2score_2 = missing_scores_info[1]
+        self.missing_score_types = missing_scores_info[2]
+        #self.missing_score_types = set()
 
         # Set reference value
         if reference_value is not None:
@@ -275,39 +275,39 @@ class Shift:
                              self.type2shift_score[t]) for t in self.type2s_diff]
 
         # Sum up components of shift score
-        pos_freq_pos_score = 0
-        pos_freq_neg_score = 0
-        neg_freq_pos_score = 0
-        neg_freq_neg_score = 0
-        pos_s_diff = 0
-        neg_s_diff = 0
+        pos_s_pos_p = 0
+        pos_s_neg_p = 0
+        neg_s_pos_p = 0
+        neg_s_neg_p = 0
+        pos_s = 0
+        neg_s = 0
         for t,p_diff,s_diff,p_avg,s_ref_diff, _ in shift_scores:
             # Get contribution of p_diff*s_ref_diff term
-            if p_diff > 0:
-                if s_ref_diff > 0:
-                    pos_freq_pos_score += p_diff*s_ref_diff
+            if s_ref_diff > 0:
+                if p_diff > 0:
+                    pos_s_pos_p += p_diff * s_ref_diff
                 else:
-                    pos_freq_neg_score += p_diff*s_ref_diff
+                    pos_s_neg_p += p_diff * s_ref_diff
             else:
-                if s_ref_diff > 0:
-                    neg_freq_pos_score += p_diff*s_ref_diff
+                if p_diff > 0:
+                    neg_s_pos_p += p_diff * s_ref_diff
                 else:
-                    neg_freq_neg_score += p_diff*s_ref_diff
+                    neg_s_neg_p += p_diff * s_ref_diff
             # Get contribution of s_diff term
             if s_diff > 0:
-                pos_s_diff += p_avg*s_diff
+                pos_s += p_avg * s_diff
             else:
-                neg_s_diff += p_avg*s_diff
+                neg_s += p_avg * s_diff
 
-        return (pos_freq_pos_score, neg_freq_pos_score,
-                pos_freq_neg_score, neg_freq_neg_score,
-                pos_s_diff, neg_s_diff)
+        return {'pos_s_pos_p': pos_s_pos_p, 'pos_s_neg_p': pos_s_neg_p,
+                'neg_s_pos_p': neg_s_pos_p, 'neg_s_neg_p': neg_s_neg_p,
+                'pos_s': pos_s, 'neg_s': neg_s}
 
-    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
-                        cumulative_inset=True, show_plot=True, filename=None,
-                        **kwargs):
+    def get_shift_graph(self, top_n=50, detailed=True, show_total=True,
+                        normalize=True, text_size_inset=True, cumulative_inset=True,
+                        show_plot=True, show_score_diffs=True, filename=None, **kwargs):
         """
-        Plot the simple shift graph between two systems of types
+        Plot the shift graph between two systems of types
 
         Parameters
         ----------
@@ -326,7 +326,7 @@ class Shift:
             matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
         # Set plotting parameters
-        kwargs = get_plotting_params(kwargs)
+        kwargs = get_plot_params(kwargs, detailed, show_total, show_score_diffs)
 
         # Get type score components
         if self.type2shift_score is None:
@@ -341,46 +341,54 @@ class Shift:
 
         # Get bar heights and colors
         if normalize:
-            normalizer = abs(self.diff)
+            norm = abs(self.diff)
         else:
-            normalizer = 1
-        bar_heights = get_bar_heights(type_scores, normalizer)
-        bar_colors = get_bar_colors(type_scores, bar_heights, kwargs)
+            norm = 1
+        bar_dims = get_bar_dims(type_scores, norm)
+        bar_colors = get_bar_colors(type_scores, kwargs)
+
         # Initialize plot
         f,ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
         ax.margins(kwargs['y_margin'])
         # Plot type contributions
-        ax = plot_contributions(ax, bar_heights, bar_colors, kwargs)
+        ax = plot_contributions(ax, top_n, bar_dims, bar_colors, kwargs, detailed)
         # Plot total sum contributions
+        max_bar_height = np.max(np.abs(bar_dims['label_heights']))
         total_comp_sums = self.get_shift_component_sums()
-        ax,comp_bars = plot_total_contribution_sums(ax, total_comp_sums,
-                                                    bar_heights[-1], kwargs)
-        # Adjust top bars for correct direction of labels
-        for i in [1, 3, 5]:
-            if comp_bars[i] == 0:
-                comp_bars[i] = -0.0000000001
+        ax,comp_bar_heights,bar_order = plot_total_contribution_sums(ax, total_comp_sums, top_n,
+                                                                     max_bar_height, kwargs,
+                                                                     detailed, show_total,
+                                                                     show_score_diffs)
 
         # Get labels for bars
         type_labels = [t for (t,_,_,_,_,_) in type_scores]
         # Add indicator if type borrwed a score
-        type_labels = [t+'*' if t in self.missing_score_types else t
+        m_sym = kwargs['missing_symbol']
+        type_labels = [t + m_sym if t in self.missing_score_types else t
                        for t in type_labels]
+        # Get labels for total contribution bars
+        bar_labels = [kwargs['symbols'][b] for b in bar_order]
+        labels = type_labels + bar_labels
         # Set font type
         if kwargs['serif']:
             set_serif()
-        # Add labels to bars
-        labels = type_labels+kwargs['symbols']
-        ax = set_bar_labels(f, ax, labels, bar_heights[-1], comp_bars, kwargs)
+        if detailed:
+            ax = set_bar_labels(f, ax, top_n, labels, bar_dims['label_heights'],
+                                comp_bar_heights, kwargs, show_total)
+        else:
+            ax = set_bar_labels(f, ax, top_n, labels, bar_dims['total_heights'],
+                                comp_bar_heights, kwargs, show_total)
 
         # Add center dividing line
         y_min,y_max = ax.get_ylim()
-        ax.plot([0,0],[1,y_max], '-', color='black', linewidth=0.7)
+        ax.plot([0,0],[1,y_max], '-', color='black', linewidth=0.7, zorder=20)
         # Add dividing line between words and component bars
         x_min,x_max = ax.get_xlim()
         ax.plot([x_min,x_max], [top_n+1,top_n+1], '-', color='black',
                  linewidth=0.7)
-        ax.plot([x_min,x_max], [top_n+2.75, top_n+2.75], '-', color='black',
-                linewidth=0.5)
+        if show_total:
+            ax.plot([x_min,x_max], [top_n+2.75, top_n+2.75], '-', color='black',
+                    linewidth=0.5)
 
         # Set cumulative diff inset
         if cumulative_inset:
@@ -412,7 +420,7 @@ class Shift:
                 warnings.simplefilter('ignore')
                 plt.tight_layout()
         if filename is not None:
-            plt.savefig(filename, dpi=425)
+            plt.savefig(filename, dpi=kwargs['dpi'])
         if show_plot:
             plt.show()
         return ax

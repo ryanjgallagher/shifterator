@@ -97,7 +97,7 @@ def get_score_dictionary(scores):
         dictionary where keys are types and values are scores of those types
     """
     if type(scores) is dict:
-        return scores
+        return scores.copy()
     # Check if dictionary name is in shifterator data
     score_dicts = os.listdir('data')
     if scores in score_dicts:
@@ -115,7 +115,7 @@ def get_score_dictionary(scores):
 
     return type2score
 
-def get_missing_scores (type2score_1, type2score_2):
+def get_missing_scores(type2score_1, type2score_2):
     """
     Get missing scores between systems by setting the score in one system with
     the score in the other system
