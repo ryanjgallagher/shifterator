@@ -12,14 +12,8 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 
-# import shifterator  -- don't do this, it's bad for a package, and has lots of consequences when the package is used in development
-import shifterator.shifterator as shifterator 
+import shifterator.shifterator as shifterator
 from .helper import *
-# I don't think this works: from shifterator.shifterator.helper import *
-# To import a module inside a package within the package, you use the dot as a reference to the package itself
-# like this: from .helper import * OR
-# you can do: from shifterator.helper import * --- but this would only work if you don't have a module that has the same name as the package.
-# but in this case, you do. so we can't use: from shifterator.helper import *
 
 # ------------------------------------------------------------------------------
 # --------------------------- Relative shift classes ---------------------------

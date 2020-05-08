@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 
 import shifterator.shifterator as shifterator
 from .helper import *
-# same reason here
 
 # ------------------------------------------------------------------------------
 # -------------------------- Symmetric shift classes ---------------------------
