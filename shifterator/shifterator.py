@@ -22,8 +22,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
 
-from shifterator.helper import *
-from shifterator.plotting import *
+from .helper import *
+from .plotting import *
 
 # ------------------------------------------------------------------------------
 # ---------------------------- GENERAL SHIFT CLASS -----------------------------
