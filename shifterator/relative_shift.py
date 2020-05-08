@@ -5,6 +5,7 @@ TODO:
 - Add option to get simple contributions for entropy, KLD, JSD (no breakdown)
 - Change the axis / title labels for shifts
 """
+
 import os
 import sys
 import warnings
@@ -12,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import shifterator.shifterator as shifterator
-from shifterator.helper import *
+from .helper import *
 
 # ------------------------------------------------------------------------------
 # --------------------------- Relative shift classes ---------------------------
