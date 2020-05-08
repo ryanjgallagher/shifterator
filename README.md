@@ -26,10 +26,10 @@ For sentiment (or any other dictionary-based) analysis, one or two dictionaries 
 from shifterator import relative_shift as rs
 
 # Get a sentiment word shift
-sentiment_shift = rs.sentiment_shift(reference=word2freq_ref,
-                                     comparison=word2freq_comp
-                                     sent_dict_ref=word2score_ref,
-                                     sent_dict_comp=word2score_comp)
+sentiment_shift = rs.SentimentShift(reference=word2freq_ref,
+                                    comparison=word2freq_comp
+                                    sent_dict_ref=word2score_ref,
+                                    sent_dict_comp=word2score_comp)
 sentiment_shift.get_shift_graph()
 
 ```
@@ -71,16 +71,16 @@ For entropy shifts and Kullback-Leibler divergence shifts, only word frequencies
 
 ```python
 # Get an entropy shift
-entropy_shift = rs.entropy_shift(reference=type2freq_ref,
-                                 comparison=type2freq_comp,
-                                 base=2
+entropy_shift = rs.EntropyShift(reference=word2freq_ref,
+                                comparison=word2freq_comp,
+                                base=2
 entropy_shift.get_shift_graph()
 
 # Get a Kullback-Leibler divergence shift
 # Note: only well-defined if both texts have all the same words
-kld_shift = rs.kl_divergence_shift(reference=word2freq_ref,
-                                   comparison=word2freq_comp,
-                                   base=2)
+kld_shift = rs.KLDivergenceShift(reference=word2freq_ref,
+                                 comparison=word2freq_comp,
+                                 base=2)
 kld_shift.get_shift_graph()
 ```
 
@@ -91,9 +91,9 @@ The Jensen-Shannon divergence symmetrizes the Kullback-Leibler divergence by mea
 ```python
 # Get a Jensen-Shannon divergence shift
 from shifterator import symmetric_shift as ss
-jsd_shift = ss.js_divergence_shift(system_1=word2freq_1,
-                                   system_2=word2freq_2,
-                                   base=2)
+jsd_shift = ss.JSDivergenceShift(system_1=word2freq_1,
+                                 system_2=word2freq_2,
+                                 base=2)
 jsd_shift.get_shift_graph()
 ```
 
@@ -137,16 +137,13 @@ The components of the shift score are stored in the Shift object as `type2p_avg`
 
 ```python
 # Get the components of the shift score for each word
-type2p_avg,type2s_diff,type2p_diff,type2s_ref_diff,type2shift_scores = shift.get_shift_scores()
+type2p_diff,type2s_diff,type2p_avg,type2s_ref_diff,type2shift_score = shift.get_shift_scores()
 ```
 
 The sum of each type of contribution can be retrieved by calling `get_shift_component_sums()`.
 
 ```python
 # Get the total sum of each type of contribution
-# Order: Positive freq and positive score, negative freq and positive score,
-#        Positive freq and negative score, negative freq and negative score,
-#        Positive score diff, negative score diff
 shift_components = shift.get_shift_component_sums()
 ```
 
@@ -157,10 +154,10 @@ There may be times when you want to exclude particular words based on their scor
 
 ```python
 # Set a stop lens on a Shift object
-sentiment_shift = rs.sentiment_shift(reference=word2freq1,
-                                     comparison=word2freq2,
-                                     type2score=word2score,
-                                     stop_lens=[(4,6), (0,1), (8,9)])
+sentiment_shift = rs.SentimentShift(reference=word2freq1,
+                                    comparison=word2freq2,
+                                    sent_dict_ref=word2score,
+                                    stop_lens=[(4,6), (0,1), (8,9)])
 ```
 
 ### Reference Values
@@ -169,14 +166,13 @@ For relative shifts, the weighted average of the reference text is automatically
 
 ```python
 # Manually set reference value on a Shift object
-jsd_shift = ss.js_divergence_shift(system_1=word2freq_1,
-                                   system_2=word2freq_2,
-                                   reference_value=0)
+jsd_shift = ss.JSDivergenceShift(system_1=word2freq_1,
+                                 system_2=word2freq_2)
 ```
 
 ### Plotting Parameters
 
-There are a number of plotting parameters that can be passed to `get_shift_graph()` when constructing a word shift graph. See [`get_plotting_params()`](https://github.com/ryanjgallagher/shifterator/blob/master/shifterator/plotting.py#L17) for the parameters that can currently altered in a word shift graph.
+There are a number of plotting parameters that can be passed to `get_shift_graph()` when constructing a word shift graph. See [`get_plot_params()`](https://github.com/ryanjgallagher/shifterator/blob/master/shifterator/plotting.py#L17) for the parameters that can currently altered in a word shift graph.
 
 
 ## Contributing
