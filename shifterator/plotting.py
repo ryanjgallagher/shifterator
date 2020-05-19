@@ -12,24 +12,16 @@ from matplotlib import rcParams
 
 
 def get_plot_params(plot_params, show_score_diffs):
-    if "detailed" not in plot_params:
-        plot_params["detailed"] = True
-    if "show_total" not in plot_params:
-        plot_params["show_total"] = True
-    if "show_score_diffs" not in plot_params:
-        plot_params["show_score_diffs"] = show_score_diffs
-    if "all_pos_contributions" not in plot_params:
-        plot_params["all_pos_contributions"] = False
-    if "width" not in plot_params:
-        plot_params["width"] = 7
-    if "height" not in plot_params:
-        plot_params["height"] = 15
-    if "bar_width" not in plot_params:
-        plot_params["bar_width"] = 0.8
-    if "bar_linewidth" not in plot_params:
-        plot_params["bar_linewidth"] = 0.25
-    if "score_colors" not in plot_params:
-        plot_params["score_colors"] = {
+    defaults = {
+        "detailed": True,
+        "show_total": True,
+        "show_score_diffs": show_score_diffs,
+        "all_pos_contributions": False,
+        "width": 7,
+        "height": 15,
+        "bar_width": 0.8,
+        "bar_linewidth": 0.25,
+        "score_colors": {
             "pos_s_pos_p": "#FFFF80",
             "pos_s_neg_p": "#FDFFD2",
             "neg_s_pos_p": "#2F7CCE",
@@ -41,11 +33,9 @@ def get_plot_params(plot_params, show_score_diffs):
             "all_pos_pos": "#FFFF80",
             "all_pos_neg": "#C4CAFC",
             "total": "#707070",
-        }
-    if "alpha_fade" not in plot_params:
-        plot_params["alpha_fade"] = 0.35
-    if "symbols" not in plot_params:
-        plot_params["symbols"] = {
+        },
+        "alpha_fade": 0.35,
+        "symbols": {
             "pos_s_pos_p": u"+\u2191",
             "pos_s_neg_p": u"+\u2193",
             "neg_s_pos_p": u"-\u2191",
@@ -57,45 +47,28 @@ def get_plot_params(plot_params, show_score_diffs):
             "all_pos_pos": "Sys. 1",
             "all_pos_neg": "Sys. 2",
             "total": r"$\Sigma$",
-        }
-    if "missing_symbol" not in plot_params:
-        plot_params["missing_symbol"] = "*"
-    if "width_scaling" not in plot_params:
-        plot_params["width_scaling"] = 1.2
-    if "bar_type_space_scaling" not in plot_params:
-        plot_params["bar_type_space_scaling"] = 0.015
-    if "pos_cumulative_inset" not in plot_params:
-        plot_params["pos_cumulative_inset"] = [0.19, 0.12, 0.175, 0.175]
-    if "pos_text_size_inset" not in plot_params:
-        plot_params["pos_text_size_inset"] = [0.81, 0.12, 0.08, 0.08]
-    if "xlabel" not in plot_params:
-        plot_params["xlabel"] = r"Per type average score shift $\delta s_{avg,r}$ (%)"
-    if "ylabel" not in plot_params:
-        plot_params["ylabel"] = r"Type rank $r$"
-    if "xlabel_fontsize" not in plot_params:
-        plot_params["xlabel_fontsize"] = 20
-    if "ylabel_fontsize" not in plot_params:
-        plot_params["ylabel_fontsize"] = 20
-    if "title_fontsize" not in plot_params:
-        plot_params["title_fontsize"] = 18
-    if "label_fontsize" not in plot_params:
-        plot_params["label_fontsize"] = 13
-    if "xtick_fontsize" not in plot_params:
-        plot_params["xtick_fontsize"] = 14
-    if "ytick_fontsize" not in plot_params:
-        plot_params["ytick_fontsize"] = 14
-    if "system_names" not in plot_params:
-        plot_params["system_names"] = ["Sys. 1", "Sys. 2"]
-    if "serif" not in plot_params:
-        plot_params["serif"] = False
-    if "tight" not in plot_params:
-        plot_params["tight"] = True
-    if "dpi" not in plot_params:
-        plot_params["dpi"] = 200
-    if "y_margin" not in plot_params:
-        plot_params["y_margin"] = 0.005
+        },
+        "missing_symbol": "*",
+        "width_scaling": 1.2,
+        "bar_type_space_scaling": 0.015,
+        "pos_cumulative_inset": [0.19, 0.12, 0.175, 0.175],
+        "pos_text_size_inset": [0.81, 0.12, 0.08, 0.08],
+        "xlabel": r"Per type average score shift $\delta s_{avg,r}$ (%)",
+        "ylabel": r"Type rank $r$",
+        "xlabel_fontsize": 20,
+        "ylabel_fontsize": 20,
+        "title_fontsize": 18,
+        "label_fontsize": 13,
+        "xtick_fontsize": 14,
+        "ytick_fontsize": 14,
+        "system_names": ["Sys. 1", "Sys. 2"],
+        "serif": False,
+        "tight": True,
+        "dpi": 200,
+        "y_margin": 0.005,
+    }
 
-    return plot_params
+    return defaults.update(plot_params)
 
 
 def set_serif():
@@ -105,7 +78,6 @@ def set_serif():
 
 def get_bar_dims(type_scores, norm, plot_params):
     """
-
     """
     # 'p' for p_diff component, 's' for s_diff component
     # 'solid' for part of comp that is not alpha faded, 'faded' otherwise
@@ -169,7 +141,6 @@ def get_bar_dims(type_scores, norm, plot_params):
 
 def get_bar_colors(type_scores, plot_params):
     """
-
     """
     score_colors = plot_params["score_colors"]
     bar_colors = {"p": [], "s": [], "total": []}

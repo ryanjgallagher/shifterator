@@ -23,15 +23,7 @@ def get_mixed_distribution(type2p, type2q, p=0.5, q=0.5):
     """
     """
     types = set(type2p.keys()).union(set(type2q.keys()))
-    type2m = dict()
-    for t in types:
-        if t in type2p and t in type2q:
-            type2m[t] = p * type2p[t] + q * type2q[t]
-        elif t in type2p:
-            type2m[t] = p * type2p[t]
-        else:
-            type2m[t] = q * type2q[t]
-    return type2m
+    return {t: p * type2p.get(t, 0) + q * type2q.get(t, 0) for t in types}
 
 
 # ------------------------------------------------------------------------------
@@ -138,7 +130,7 @@ def get_missing_scores(type2score_1, type2score_2):
         elif t not in type2score_2:
             type2score_2[t] = type2score_1[t]
             missing_types.add(t)
-    return (type2score_1, type2score_2, missing_types)
+    return type2score_1, type2score_2, missing_types
 
 
 # ------------------------------------------------------------------------------
