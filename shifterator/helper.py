@@ -140,8 +140,17 @@ def get_type_surprisals(type2p, base=2, alpha=1):
     """
     TODO: set order of entropy using alpha
     """
-    type2surprise = {t: -1 * log(p, base) for t, p in type2p.items()}
-    return type2surprise
+    return {t: -log(p, base) for t, p in type2p.items()}
+
+
+def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
+    # Normalize reference and comparison frequencies
+    type2p_1 = get_relative_freqs(system_1)
+    type2p_2 = get_relative_freqs(system_2)
+    # Get surprisal of each type
+    type2surprisal_1 = get_type_surprisals(type2p_1, base=base, alpha=alpha)
+    type2surprisal_2 = get_type_surprisals(type2p_2, base=base, alpha=alpha)
+    return type2p_1, type2p_2, type2surprisal_1, type2surprisal_2
 
 
 def get_type_logs(type2p, base=2, alpha=1, force_zero=False):
@@ -155,16 +164,6 @@ def get_type_logs(type2p, base=2, alpha=1, force_zero=False):
             else:
                 raise
     return type2log
-
-
-def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
-    # Normalize reference and comparison frequencies
-    type2p_1 = get_relative_freqs(system_1)
-    type2p_2 = get_relative_freqs(system_2)
-    # Get surprisal of each type
-    type2surprisal_1 = get_type_surprisals(type2p_1, base=base, alpha=alpha)
-    type2surprisal_2 = get_type_surprisals(type2p_2, base=base, alpha=alpha)
-    return type2p_1, type2p_2, type2surprisal_1, type2surprisal_2
 
 
 def get_jsd_scores(
@@ -191,3 +190,21 @@ def get_jsd_scores(
         for t in type2log_m
     }
     return type2p, type2q, type2m, type2score_1, type2score_2
+
+
+def tsallis_entropy(prob, alpha=1, base=2):
+    """
+    References
+    ----------
+        - https://arxiv.org/abs/1611.03596
+        - https://en.wikipedia.org/wiki/Tsallis_entropy
+    """
+    if prob == 0:
+        entropy = 0
+    elif alpha == 1:
+        entropy = -prob * log(prob, base)
+    elif alpha >= 0:
+        entropy = (prob ** alpha - 1) / (1 - alpha)
+    else:
+        raise ValueError(f"Expected 0 <= alpha, received alpha = {alpha}!")
+    return entropy
