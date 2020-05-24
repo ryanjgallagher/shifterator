@@ -79,6 +79,8 @@ def get_plot_params(plot_params, show_score_diffs):
         plot_params['title_fontsize'] = 18
     if 'label_fontsize' not in plot_params:
         plot_params['label_fontsize'] = 13
+    if 'tick_format' not in plot_params:
+        tick_format = '{:.1f}'
     if 'xtick_fontsize' not in plot_params:
         plot_params['xtick_fontsize'] = 14
     if 'ytick_fontsize' not in plot_params:
@@ -362,11 +364,13 @@ def adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs, bar_type_space
     return ax
 
 def set_ticks(ax, top_n, plot_params):
+    tick_format = plot_params['tick_format']
+
     # Make xticks larger
     if not plot_params['all_pos_contributions']:
-        x_ticks = ['{:.1f}'.format(t) for t in ax.get_xticks()]
+        x_ticks = [tick_format.format(t) for t in ax.get_xticks()]
     else:
-        x_ticks = ['{:.1f}'.format(abs(t)) for t in ax.get_xticks()]
+        x_ticks = [tick_format.format(abs(t)) for t in ax.get_xticks()]
     ax.set_xticklabels(x_ticks, fontsize=plot_params['xtick_fontsize'])
     # Flip y-axis tick labels and make sure every 5th tick is labeled
     y_ticks = list(range(1,top_n,5))+[top_n]
