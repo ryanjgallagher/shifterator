@@ -97,6 +97,10 @@ def get_plot_params(plot_params, show_score_diffs):
         plot_params['dpi'] = 200
     if 'y_margin' not in plot_params:
         plot_params['y_margin'] = 0.005
+    if 'remove_xticks' not in plot_params:
+        plot_params['remove_xticks'] = False
+    if 'remove_yticks' not in plot_params:
+        plot_params['remove_yticks'] = False
 
     return plot_params
 
@@ -367,6 +371,8 @@ def adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs, bar_type_space
 
 def set_ticks(ax, top_n, plot_params):
     tick_format = plot_params['tick_format']
+    remove_xticks = plot_params['remove_xticks']
+    remove_yticks = plot_params['remove_yticks']
 
     # Make xticks larger
     if not plot_params['all_pos_contributions']:
@@ -380,6 +386,12 @@ def set_ticks(ax, top_n, plot_params):
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_tick_labels, fontsize=plot_params['ytick_fontsize'])
 
+    # Remove all x or y axis ticks
+    if remove_xticks:
+        remove_xaxis_ticks(ax)
+    if remove_yticks:
+        remove_yaxis_ticks(ax)
+
     return ax
 
 def set_spines(ax, plot_params):
@@ -392,6 +404,26 @@ def set_spines(ax, plot_params):
                 print('invalid spine argument')
 
     return ax
+
+def remove_yaxis_ticks(ax, major=True, minor=True):
+    if major:
+        for tic in ax.yaxis.get_major_ticks():
+            tic.tick1line.set_visible(False)
+            tic.tick2line.set_visible(False)
+    if minor:
+        for tic in ax.yaxis.get_minor_ticks():
+            tic.tick1line.set_visible(False)
+            tic.tick2line.set_visible(False)
+
+def remove_xaxis_ticks(ax, major=True, minor=True):
+    if major:
+        for tic in ax.xaxis.get_major_ticks():
+            tic.tick1line.set_visible(False)
+            tic.tick2line.set_visible(False)
+    if minor:
+        for tic in ax.xaxis.get_minor_ticks():
+            tic.tick1line.set_visible(False)
+            tic.tick2line.set_visible(False)
 
 def get_cumulative_inset(f, type2shift_score, top_n, plot_params):
     # Get plotting params
