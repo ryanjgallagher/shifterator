@@ -405,6 +405,10 @@ class Shift:
 
         # Make x-tick labels bigger, flip y-axis ticks and label every 5th one
         ax = set_ticks(ax, top_n, kwargs)
+
+        # Set axis spines 
+        ax = set_spines(ax, kwargs)
+
         # Set axis labels and title
         ax.set_xlabel(kwargs['xlabel'], fontsize=kwargs['xlabel_fontsize'])
         ax.set_ylabel(kwargs['ylabel'], fontsize=kwargs['ylabel_fontsize'])

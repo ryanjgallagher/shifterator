@@ -67,6 +67,8 @@ def get_plot_params(plot_params, show_score_diffs):
         plot_params['pos_cumulative_inset'] = [0.19, 0.12, 0.175, 0.175]
     if 'pos_text_size_inset' not in plot_params:
         plot_params['pos_text_size_inset'] = [0.81, 0.12, 0.08, 0.08]
+    if 'spines' not in plot_params:
+        plot_params['spines'] = [] 
     if 'xlabel' not in plot_params:
         plot_params['xlabel'] = r'Per type average score shift $\delta s_{avg,r}$ (%)'
     if 'ylabel' not in plot_params:
@@ -377,6 +379,17 @@ def set_ticks(ax, top_n, plot_params):
     y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_tick_labels, fontsize=plot_params['ytick_fontsize'])
+
+    return ax
+
+def set_spines(ax, plot_params):
+    spines = plot_params['spines']
+    if spines:
+        for spine in spines:
+            if spine in {'left', 'right', 'top', 'bottom'}:
+                ax.spines[spine].set_visible(False)
+            else:
+                print('invalid spine argument')
 
     return ax
 
