@@ -13,6 +13,12 @@ import os
 # ------------------------------------------------------------------------------
 def get_relative_freqs(type2freq):
     """
+    Calculates the relative frequency (proportion) of each type in a system
+
+    Parameters
+    ----------
+    type2freq: dict
+        keys are types of a system and values are frequencies of those types
     """
     n = sum(type2freq.values())
     type2p = {t: s / n for t, s in type2freq.items()}
@@ -21,6 +27,15 @@ def get_relative_freqs(type2freq):
 
 def get_mixed_distribution(type2p, type2q, p=0.5, q=0.5):
     """
+    Calculates the additive mixed distribution of two other distributions
+
+    Parameters
+    ----------
+    type2p, type2q: dict
+        keys are types of a system and values are relative freqs of those types
+    p, q: float
+        relative weights of each distribution in the mixed distribution. Should
+        sum to 1.
     """
     types = set(type2p.keys()).union(set(type2q.keys()))
     return {t: p * type2p.get(t, 0) + q * type2q.get(t, 0) for t in types}
@@ -115,11 +130,14 @@ def get_missing_scores(type2score_1, type2score_2):
     type2score_1, type2score_2: dict
         keys are types and values are scores
 
-    Output
+    Returns
     ------
     type2score_1, type2score_2: dict
         keys are types and values are scores, updated to have scores across all
         types between the two score dictionaries
+
+    missing_types: set
+        Keys that were present in only one of the provided dicts.
     """
     missing_types = set()
     types = set(type2score_1.keys()).union(set(type2score_2.keys()))
@@ -138,22 +156,40 @@ def get_missing_scores(type2score_1, type2score_2):
 # ------------------------------------------------------------------------------
 def get_type_surprisals(type2p, base=2, alpha=1):
     """
-    TODO: set order of entropy using alpha
+    Calculates the surprisal of each type in a system, i.e. log(1/p_i). Does not
+    catch types with 0 relative frequency, assumed to be handled upstream
+
+    Parameters
+    ----------
+    type2p: dict
+        keys are types of a system and values are relative freqs of those types
+    base: int
+        the base of the logarithm
+    alpha: float
+        currently not implemented, but left for later updates
     """
     return {t: -math.log(p, base) for t, p in type2p.items()}
 
 
-def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
-    # Normalize reference and comparison frequencies
-    type2p_1 = get_relative_freqs(system_1)
-    type2p_2 = get_relative_freqs(system_2)
-    # Get surprisal of each type
-    type2surprisal_1 = get_type_surprisals(type2p_1, base=base, alpha=alpha)
-    type2surprisal_2 = get_type_surprisals(type2p_2, base=base, alpha=alpha)
-    return type2p_1, type2p_2, type2surprisal_1, type2surprisal_2
-
-
 def get_type_logs(type2p, base=2, alpha=1, force_zero=False):
+    """
+    Calculates the logarithm of each type in a system, i.e. log(p_i)
+
+    Parameters
+    ----------
+    type2p: dict
+        keys are types of a system and values are relative freqs of those types
+    base: int
+        the base of the logarithm
+    alpha: float
+        currently not implemented, but left for later updates
+    force_zero: boolean
+        if True, force any type with 0 probability to have log(p_i) = log(0) = 0
+        This is mathematically invalid, but a useful workaround for calculating
+        the JSD, where even though we calculate log(p) here individually, it is
+        recombined with other scores to get p * log(p), which should be 0 if
+        both p and log(p) are zero.
+    """
     type2log = dict()
     for t, p in type2p.items():
         try:
@@ -166,9 +202,48 @@ def get_type_logs(type2p, base=2, alpha=1, force_zero=False):
     return type2log
 
 
+def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
+    """
+    Gets all surprisal scores necessary for calculating probability divergence
+    measures like the KLD or JSD
+
+    Parameters
+    ----------
+    system_1, system_2: dict
+        keys are types of a system and values are frequencies of those types
+    base: int
+        the base for the logarithm when computing entropy for the JSD
+    alpha: float
+        currently not implemented, but left for later updates
+    """
+    # Normalize reference and comparison frequencies
+    type2p_1 = get_relative_freqs(system_1)
+    type2p_2 = get_relative_freqs(system_2)
+    # Get surprisal of each type
+    type2surprisal_1 = get_type_surprisals(type2p_1, base=base, alpha=alpha)
+    type2surprisal_2 = get_type_surprisals(type2p_2, base=base, alpha=alpha)
+    return type2p_1, type2p_2, type2surprisal_1, type2surprisal_2
+
+
 def get_jsd_scores(
     type2freq_1, type2freq_2, base=2, alpha=1, weight_1=0.5, weight_2=0.5
 ):
+    """
+    Calculates the contribution of the types in two systems to the Jensen-Shannon
+    divergence (JSD) between those systems
+
+    Parameters
+    ----------
+    type2freq_1, type2freq_2: dict
+        keys are types of a system and values are frequencies of those types
+    base: int
+        the base for the logarithm when computing entropy for the JSD
+    weight_1, weight_2: float
+        relative weights of system_1 and system_2 when constructing their mixed
+        distribution. Should sum to 1
+    alpha: float
+        currently not implemented, but left for later updates
+    """
     # Normalize reference and comparison frequencies
     type2p = get_relative_freqs(type2freq_1)
     type2q = get_relative_freqs(type2freq_2)

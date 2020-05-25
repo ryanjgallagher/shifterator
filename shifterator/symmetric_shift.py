@@ -8,9 +8,6 @@ from .shifterator import Shift
 
 
 class ProportionShift(Shift):
-    """
-    """
-
     def __init__(self, system_1, system_2, stop_lens=None):
         # Set relative frequency to 0 for types that don't appear
         types = set(system_1.keys()).union(system_2.keys())
@@ -53,9 +50,6 @@ class ProportionShift(Shift):
 
 
 class JSDivergenceShift(Shift):
-    """
-    """
-
     def __init__(
         self,
         system_1,
