@@ -311,7 +311,7 @@ def plot_total_contribution_sums(
         total_index = bar_order.index("total")
         total = sum(comp_bar_heights)
         comp_bar_heights[total_index] = total
-    # Rescacle bars
+    # Rescale bars
     if not plot_params["all_pos_contributions"]:
         max_bar_height = np.max(np.abs(bar_dims["label_heights"]))
     else:

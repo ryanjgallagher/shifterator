@@ -173,7 +173,7 @@ def get_type_surprisals(type2p, base=2, alpha=1):
 
 def get_type_logs(type2p, base=2, alpha=1, force_zero=False):
     """
-    Calculates the logarithm of each type in a system, i.e. log(p_i)
+    Calculates the log relative frequency of each type in a system, i.e. log(p_i)
 
     Parameters
     ----------
