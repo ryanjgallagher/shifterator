@@ -286,7 +286,7 @@ def tsallis_entropy(prob, count, alpha=1, base=math.e):
 
 
 def get_tsallis_jsd_scores(
-    type2freq_1, type2freq_2, base=2, alpha=1, weight_1=0.5, weight_2=0.5
+    type2freq_1, type2freq_2, base=math.e, alpha=1, weight_1=0.5, weight_2=0.5
 ):
     type2p = get_relative_freqs(type2freq_1)
     type2q = get_relative_freqs(type2freq_2)
