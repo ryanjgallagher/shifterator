@@ -67,8 +67,8 @@ def get_plot_params(plot_params, show_score_diffs):
         "dpi": 200,
         "y_margin": 0.005,
     }
-
-    return defaults.update(plot_params)
+    defaults.update(plot_params)
+    return defaults
 
 
 def set_serif():
@@ -181,11 +181,12 @@ def plot_contributions(ax, top_n, bar_dims, bar_colors, plot_params):
     """
     """
     # Set plotting params
-    ys = range(1, top_n + 1)
+    bar_count = min(top_n, len(bar_dims["total_heights"]))
+    ys = range(top_n - bar_count + 1, top_n + 1)
     alpha = plot_params["alpha_fade"]
     width = plot_params["bar_width"]
     linewidth = plot_params["bar_linewidth"]
-    edgecolor = ["black"] * top_n  # hack b/c matplotlib has a bug
+    edgecolor = ["black"] * bar_count  # hack b/c matplotlib has a bug
     if plot_params["detailed"]:
         # Plot the p_diff and s_diff solid contributions
         ax.barh(
@@ -372,7 +373,7 @@ def set_bar_labels(
     for n_h in range(int(len(comp_bar_heights) / 2)):
         y = min_y + (1.5 * n_h)
         top_heights += [y, y]
-    bar_heights = list(range(1, n + 1)) + top_heights
+    bar_heights = list(range(top_n - n + 1, top_n + 1)) + top_heights
     # Set all bar labels
     text_objs = []
     fontsize = plot_params["label_fontsize"]

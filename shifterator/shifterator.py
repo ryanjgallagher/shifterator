@@ -254,7 +254,7 @@ class Shift:
         # Normalize the total shift scores
         total_diff = sum(type2shift_score.values())
         self.diff = total_diff
-        if normalize:
+        if normalize and self.diff != 0:
             type2shift_score = {
                 t: shift_score / abs(total_diff)
                 for t, shift_score in type2shift_score.items()
@@ -414,7 +414,7 @@ class Shift:
         type_scores.reverse()
 
         # Get bar heights and colors
-        if normalize:
+        if normalize and self.diff != 0:
             norm = abs(self.diff)
         else:
             norm = 1
