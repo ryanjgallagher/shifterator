@@ -18,7 +18,15 @@ from .helper import *
 # ------------------------------------------------------------------------------
 class ProportionShift(shifterator.Shift):
     """
+    Shift object for calculating differences in proportions of types across two
+    systems.
 
+    Parameters
+    __________
+    system_1, system_2: dict
+        keys are types of a system and values are frequencies of those types
+    stop_lens: list
+        currently not implemented, but left for later updates
     """
     def __init__(self, system_1, system_2, stop_lens=None):
         # Set relative frequency to 0 for types that don't appear
@@ -45,10 +53,26 @@ class ProportionShift(shifterator.Shift):
 
 class JSDivergenceShift(shifterator.Shift):
     """
+    Shift object for calculating the Jensen-Shannon divergence (JSD) between two
+    systems
 
+    Parameters
+    __________
+    system_1, system_2: dict
+        keys are types of a system and values are frequencies of those types
+    base: int
+        the base for the logarithm when computing entropy for the JSD
+    weight_1, weight_2: float
+        relative weights of system_1 and system_2 when constructing their mixed
+        distribution. Should sum to 1
+    alpha: float
+        currently not implemented, but left for later updates
     """
     def __init__(self, system_1, system_2, base=2, weight_1=0.5, weight_2=0.5,
                  alpha=1, stop_lens=None):
+        # Check weights
+        if weight_1 + weight_2 != 1:
+            raise ValueError('weight_1 and weight_2 do not sum to 1')
         # Get JSD scores
         type2p,type2q,type2m,type2score_1,type2score_2 = get_jsd_scores(system_1, system_2,
                                                                         weight_1=weight_1,
