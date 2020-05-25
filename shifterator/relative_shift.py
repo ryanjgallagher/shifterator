@@ -10,9 +10,6 @@ from .helper import get_surprisal_scores
 from .shifterator import Shift
 
 
-# ------------------------------------------------------------------------------
-# --------------------------- Relative shift classes ---------------------------
-# ------------------------------------------------------------------------------
 class RelativeShift(Shift):
     def __init__(
         self,
@@ -43,8 +40,7 @@ class RelativeShift(Shift):
             the reference score from which to calculate the deviation. If None,
             defaults to the weighted score of reference
         """
-        Shift.__init__(
-            self,
+        super().__init__(
             system_1=reference,
             system_2=comparison,
             type2score_1=type2score_ref,
@@ -91,8 +87,7 @@ class SentimentShift(RelativeShift):
             the reference score from which to calculate the deviation. If None,
             defaults to the average sentiment of reference
         """
-        RelativeShift.__init__(
-            self,
+        super().__init__(
             reference,
             comparison,
             sent_dict_ref,
@@ -122,7 +117,7 @@ class EntropyShift(RelativeShift):
         """
         # Get surprisal scores
         type2p_ref, type2p_comp, type2s_ref, type2s_comp = get_surprisal_scores(
-            reference, comparison, base=2, alpha=1
+            reference, comparison, base=base, alpha=1
         )
         # Set zero surprisal scores for types that do not appear
         types = set(type2s_ref.keys()).union(set(type2s_comp.keys()))
@@ -132,8 +127,7 @@ class EntropyShift(RelativeShift):
             elif t not in type2s_comp:
                 type2s_comp[t] = 0
         # Initialize shift
-        RelativeShift.__init__(
-            self,
+        super().__init__(
             reference,
             comparison,
             type2s_ref,
@@ -155,8 +149,7 @@ class EntropyShift(RelativeShift):
         detailed=False,
         **kwargs
     ):
-        RelativeShift.get_shift_graph(
-            self,
+        super().get_shift_graph(
             top_n=top_n,
             normalize=normalize,
             text_size_inset=text_size_inset,
@@ -200,11 +193,10 @@ class KLDivergenceShift(RelativeShift):
             return
         # Get surprisal scores
         type2p_ref, type2p_comp, type2s_ref, type2s_comp = get_surprisal_scores(
-            reference, comparison, base=2, alpha=1
+            reference, comparison, base=base, alpha=1
         )
         # Initialize shift
-        RelativeShift.__init__(
-            self,
+        super().__init__(
             comparison,
             comparison,
             type2s_ref,
@@ -226,8 +218,7 @@ class KLDivergenceShift(RelativeShift):
         detailed=False,
         **kwargs
     ):
-        RelativeShift.get_shift_graph(
-            self,
+        super().get_shift_graph(
             top_n=top_n,
             normalize=normalize,
             text_size_inset=text_size_inset,

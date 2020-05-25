@@ -7,9 +7,6 @@ from .helper import get_jsd_scores
 from .shifterator import Shift
 
 
-# ------------------------------------------------------------------------------
-# -------------------------- Symmetric shift classes ---------------------------
-# ------------------------------------------------------------------------------
 class ProportionShift(Shift):
     """
     """
@@ -23,8 +20,7 @@ class ProportionShift(Shift):
             elif t not in system_2:
                 system_2[t] = 0
         # Initialize shift object
-        Shift.__init__(
-            self,
+        super().__init__(
             system_1=system_1,
             system_2=system_2,
             type2score_1=None,
@@ -44,8 +40,7 @@ class ProportionShift(Shift):
         detailed=False,
         **kwargs
     ):
-        Shift.get_shift_graph(
-            self,
+        super().get_shift_graph(
             top_n=top_n,
             normalize=normalize,
             text_size_inset=text_size_inset,
@@ -53,7 +48,7 @@ class ProportionShift(Shift):
             show_plot=show_plot,
             filename=filename,
             detailed=detailed,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -81,8 +76,7 @@ class JSDivergenceShift(Shift):
             alpha=alpha,
         )
         # Initialize shift object
-        Shift.__init__(
-            self,
+        super().__init__(
             system_1=system_1,
             system_2=system_2,
             type2score_1=type2score_1,
@@ -106,8 +100,7 @@ class JSDivergenceShift(Shift):
         show_total=False,
         **kwargs
     ):
-        Shift.get_shift_graph(
-            self,
+        super().get_shift_graph(
             top_n=top_n,
             normalize=normalize,
             text_size_inset=text_size_inset,
@@ -117,5 +110,5 @@ class JSDivergenceShift(Shift):
             detailed=detailed,
             show_total=show_total,
             all_pos_contributions=True,
-            **kwargs
+            **kwargs,
         )

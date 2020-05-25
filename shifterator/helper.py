@@ -4,8 +4,8 @@ Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
 TODO:
  - Allow different order entropies to be specified using alpha
 """
+import math
 import os
-from math import log
 
 
 # ------------------------------------------------------------------------------
@@ -140,7 +140,7 @@ def get_type_surprisals(type2p, base=2, alpha=1):
     """
     TODO: set order of entropy using alpha
     """
-    return {t: -log(p, base) for t, p in type2p.items()}
+    return {t: -math.log(p, base) for t, p in type2p.items()}
 
 
 def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
@@ -157,7 +157,7 @@ def get_type_logs(type2p, base=2, alpha=1, force_zero=False):
     type2log = dict()
     for t, p in type2p.items():
         try:
-            type2log[t] = log(p, base)
+            type2log[t] = math.log(p, base)
         except ValueError:
             if force_zero:
                 type2log[t] = 0
@@ -192,7 +192,7 @@ def get_jsd_scores(
     return type2p, type2q, type2m, type2score_1, type2score_2
 
 
-def tsallis_entropy(prob, alpha=1, base=2):
+def tsallis_entropy(prob, count, alpha=1, base=math.e):
     """
     References
     ----------
@@ -202,9 +202,42 @@ def tsallis_entropy(prob, alpha=1, base=2):
     if prob == 0:
         entropy = 0
     elif alpha == 1:
-        entropy = -prob * log(prob, base)
+        entropy = -prob * math.log(prob, base)
     elif alpha >= 0:
-        entropy = (prob ** alpha - 1) / (1 - alpha)
+        entropy = (prob ** alpha - 1 / count) / (1 - alpha)
     else:
         raise ValueError(f"Expected 0 <= alpha, received alpha = {alpha}!")
     return entropy
+
+
+def get_tsallis_jsd_scores(
+    type2freq_1, type2freq_2, base=2, alpha=1, weight_1=0.5, weight_2=0.5
+):
+    type2p = get_relative_freqs(type2freq_1)
+    type2q = get_relative_freqs(type2freq_2)
+    type2m = get_mixed_distribution(type2p, type2q, p=weight_1, q=weight_2)
+
+    p_count = len(type2p)
+    q_count = len(type2q)
+    m_count = len(type2m)
+
+    type2p = {
+        t: tsallis_entropy(p, p_count, alpha=alpha, base=base)
+        for t, p in type2p.items()
+    }
+    type2q = {
+        t: tsallis_entropy(q, q_count, alpha=alpha, base=base)
+        for t, q in type2q.items()
+    }
+    type2m = {
+        t: tsallis_entropy(m, m_count, alpha=alpha, base=base)
+        for t, m in type2m.items()
+    }
+
+    type2score_1 = {
+        t: 0.5 * (type2m[t] - type2p[t]) if t in type2p else 0 for t in type2m
+    }
+    type2score_2 = {
+        t: 0.5 * (type2q[t] - type2m[t]) if t in type2q else 0 for t in type2m
+    }
+    return type2p, type2q, type2m, type2score_1, type2score_2

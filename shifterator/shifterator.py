@@ -18,9 +18,6 @@ import matplotlib.pyplot as plt
 from . import helper, plotting
 
 
-# ------------------------------------------------------------------------------
-# ---------------------------- GENERAL SHIFT CLASS -----------------------------
-# ------------------------------------------------------------------------------
 class Shift:
     """
     Shift object for calculating weighted scores of two systems of types,
@@ -76,7 +73,7 @@ class Shift:
             self.type2score_1 = {t: 1 for t in self.type2freq_1}
             self.type2score_2 = {t: 1 for t in self.type2freq_2}
             self.show_score_diffs = False
-        # Filter type dictionaries by stop lense
+        # Filter type dictionaries by stop_lens
         self.stop_lens = stop_lens
         if stop_lens is not None:
             self.type2freq_1, self.type2score_1, sw_1 = helper.filter_by_scores(
