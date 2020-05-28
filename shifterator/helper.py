@@ -2,11 +2,9 @@
 helper.py
 
 Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-
-TODO:
-- Allow different order entropies to be specified using alpha
 """
 import os
+import pkgutil
 import collections
 import numpy as np
 from math import log
@@ -90,7 +88,7 @@ def filter_by_scores(type2freq, type2score, stop_lens):
 
     return (type2freq_new, type2score_new, stop_words)
 
-def get_score_dictionary(scores):
+def get_score_dictionary(scores, encoding='utf-8'):
     """
     Loads a dictionary of type scores
 
@@ -98,12 +96,7 @@ def get_score_dictionary(scores):
     ----------
     scores: dict or str
         if dict, then returns the dict automatically. If str, then it is either
-        the name of a shifterator dictionary to load, or file path of dictionary
-        to load. File should be two columns of types and scores on each line,
-        separated by delimiter
-            Options: 'labMT_english'
-    stop_lens: iteratble of 2-tuples
-        denotes intervals that should be excluded when calculating shift scores
+        the name of a lexicon included in Shifterator
 
     Returns
     -------
@@ -112,20 +105,23 @@ def get_score_dictionary(scores):
     """
     if isinstance(scores, collections.Mapping):
         return scores.copy()
-    # Check if dictionary name is in shifterator data
-    score_dicts = os.listdir('data')
-    if scores in score_dicts:
-        dict_file = 'data/'+scores
-    elif  scores+'.csv' in score_dicts:
-        dict_file = 'data/'+scores+'.csv'
-    else: # Assume file path
-        dict_file = scores
-    # Load score dictionary
-    type2score = {}
-    with open(dict_file, 'r') as f:
-        for line in f:
-            t,score = line.strip().split('\t')
-            type2score[t] = score
+
+    # Else, load scores from predefined score file in shifterator
+    try:
+        lexicon = scores.split('_')[0]
+        score_f = 'lexicons/{}/{}.tsv'.format(lexicon, scores)
+        all_scores = pkgutil.get_data(__name__, score_f).decode(encoding)
+    except FileNotFoundError:
+        raise FileNotFoundError('Lexicon does not exit in Shifterator: {}'.format(scores))
+    # Parse scores from all_scores, which is just a long str
+    # Score files are line delimited with two tab-spaced columns: type and score
+    type_scores = all_scores.split('\n')
+    type2score = dict()
+    for t_s in type_scores:
+        if len(t_s) == 0:
+            continue
+        t,s = t_s.split('\t')
+        type2score[t] = float(s)
 
     return type2score
 

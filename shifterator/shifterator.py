@@ -4,15 +4,10 @@ shifterator.py
 Requires: Python 3
 
 TODO:
-- Make "system names" a parameter of the shift class, so that "Reference" and
-  "Comparison" can be passed via the relative shift classes
 - Add funcs to shift class that allow for easy updating of type2freq dicts
 - Make it easy to remove / reset the filter. This will involve having to hold
   onto stop words, their freqs, and their values (discarded as of now)
 - Make it so you can specify words as stop words instead of just a filter window
-- Properly handle types without scores
-- Clean up class docstrings to fit standards of where things should be described
-  (whether it's in init or under class, and listing what funcs are available)
 """
 
 import os
@@ -30,7 +25,7 @@ from .plotting import *
 # ------------------------------------------------------------------------------
 class Shift:
     def __init__(self, system_1, system_2, type2score_1=None, type2score_2=None,
-                 reference_value=None, stop_lens=None):
+                 reference_value=None, stop_lens=None, encoding='utf-8'):
         """
         Shift object for calculating weighted scores of two systems of types,
         and the shift between them
@@ -53,21 +48,26 @@ class Shift:
         stop_lens: iterable of 2-tuples, optional
             denotes intervals that should be excluded when calculating shift
             scores
+        encoding: str, optional
+            encoding for reading in a lexicon included in Shifterator
         """
         # Set type2freq dictionaries
         self.type2freq_1 = system_1
         self.type2freq_2 = system_2
         # Set type2score dictionaries
         if type2score_1 is not None and type2score_2 is not None:
-            self.type2score_1 = get_score_dictionary(type2score_1)
-            self.type2score_2 = get_score_dictionary(type2score_2)
-            self.show_score_diffs = True
+            self.type2score_1 = get_score_dictionary(type2score_1, encoding)
+            self.type2score_2 = get_score_dictionary(type2score_2, encoding)
+            if type2score_1 != type2score_2:
+                self.show_score_diffs = True
+            else:
+                self.show_score_diffs = False
         elif type2score_1 is not None:
-            self.type2score_1 = get_score_dictionary(type2score_1)
+            self.type2score_1 = get_score_dictionary(type2score_1, encoding)
             self.type2score_2 = self.type2score_1
             self.show_score_diffs = False
         elif type2score_2 is not None:
-            self.type2score_2 = get_score_dictionary(type2score_2)
+            self.type2score_2 = get_score_dictionary(type2score_2, encoding)
             self.type2score_1 = self.type2score_2
             self.show_score_diffs = False
         else:
