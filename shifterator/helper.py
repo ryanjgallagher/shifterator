@@ -7,6 +7,7 @@ TODO:
 - Allow different order entropies to be specified using alpha
 """
 import os
+import collections
 import numpy as np
 from math import log
 
@@ -109,7 +110,7 @@ def get_score_dictionary(scores):
     type2score, dict
         dictionary where keys are types and values are scores of those types
     """
-    if type(scores) is dict:
+    if isinstance(scores, collections.Mapping):
         return scores.copy()
     # Check if dictionary name is in shifterator data
     score_dicts = os.listdir('data')
