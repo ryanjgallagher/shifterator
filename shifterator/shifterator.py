@@ -384,7 +384,7 @@ class Shift:
                                 comp_bar_heights, kwargs)
 
         # Add center dividing line
-        ax.axvline(0, ls='-', color='black', lw=0.7, zorder=20)
+        ax.axvline(0, ls='-', color='black', lw=0.8, zorder=20)
 
         # Add dividing line between words and component bars
         ax.axhline(top_n+1, ls='-', color='black', lw=0.7, zorder=20)
