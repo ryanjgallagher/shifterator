@@ -384,15 +384,12 @@ class Shift:
                                 comp_bar_heights, kwargs)
 
         # Add center dividing line
-        y_min,y_max = ax.get_ylim()
-        ax.plot([0,0],[1,y_max], '-', color='black', linewidth=1.0, zorder=20)
+        ax.axvline(0, ls='-', color='black', lw=0.7, zorder=20)
+
         # Add dividing line between words and component bars
-        x_min,x_max = ax.get_xlim()
-        ax.plot([x_min,x_max], [top_n+1,top_n+1], '-', color='black',
-                 linewidth=0.7)
+        ax.axhline(top_n+1, ls='-', color='black', lw=0.7, zorder=20)
         if kwargs['show_total']:
-            ax.plot([x_min,x_max], [top_n+2.75, top_n+2.75], '-', color='black',
-                    linewidth=0.5)
+            ax.axhline(top_n+2.75, ls='-', color='black', lw=0.5, zorder=20)
 
         # Set cumulative diff inset
         if cumulative_inset:
