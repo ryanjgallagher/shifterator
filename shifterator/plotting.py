@@ -79,6 +79,8 @@ def get_plot_params(plot_params, show_score_diffs):
         plot_params['title_fontsize'] = 18
     if 'label_fontsize' not in plot_params:
         plot_params['label_fontsize'] = 13
+    if 'tick_format' not in plot_params:
+        tick_format = '{:.1f}'
     if 'xtick_fontsize' not in plot_params:
         plot_params['xtick_fontsize'] = 14
     if 'ytick_fontsize' not in plot_params:
@@ -93,6 +95,12 @@ def get_plot_params(plot_params, show_score_diffs):
         plot_params['dpi'] = 200
     if 'y_margin' not in plot_params:
         plot_params['y_margin'] = 0.005
+    if 'remove_xticks' not in plot_params:
+        plot_params['remove_xticks'] = False
+    if 'remove_yticks' not in plot_params:
+        plot_params['remove_yticks'] = False
+    if 'invisible_spines' not in plot_params:
+        plot_params['invisible_spines'] = [] 
 
     return plot_params
 
@@ -362,11 +370,15 @@ def adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs, bar_type_space
     return ax
 
 def set_ticks(ax, top_n, plot_params):
+    tick_format = plot_params['tick_format']
+    remove_xticks = plot_params['remove_xticks']
+    remove_yticks = plot_params['remove_yticks']
+
     # Make xticks larger
     if not plot_params['all_pos_contributions']:
-        x_ticks = ['{:.1f}'.format(t) for t in ax.get_xticks()]
+        x_ticks = [tick_format.format(t) for t in ax.get_xticks()]
     else:
-        x_ticks = ['{:.1f}'.format(abs(t)) for t in ax.get_xticks()]
+        x_ticks = [tick_format.format(abs(t)) for t in ax.get_xticks()]
     ax.set_xticklabels(x_ticks, fontsize=plot_params['xtick_fontsize'])
     # Flip y-axis tick labels and make sure every 5th tick is labeled
     y_ticks = list(range(1,top_n,5))+[top_n]
@@ -374,7 +386,44 @@ def set_ticks(ax, top_n, plot_params):
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_tick_labels, fontsize=plot_params['ytick_fontsize'])
 
+    # Remove all x or y axis ticks
+    if remove_xticks:
+        remove_xaxis_ticks(ax)
+    if remove_yticks:
+        remove_yaxis_ticks(ax)
+
     return ax
+
+def set_spines(ax, plot_params):
+    spines = plot_params['invisible_spines']
+    if spines:
+        for spine in spines:
+            if spine in {'left', 'right', 'top', 'bottom'}:
+                ax.spines[spine].set_visible(False)
+            else:
+                print('invalid spine argument')
+
+    return ax
+
+def remove_yaxis_ticks(ax, major=True, minor=True):
+    if major:
+        for tic in ax.yaxis.get_major_ticks():
+            tic.tick1line.set_visible(False)
+            tic.tick2line.set_visible(False)
+    if minor:
+        for tic in ax.yaxis.get_minor_ticks():
+            tic.tick1line.set_visible(False)
+            tic.tick2line.set_visible(False)
+
+def remove_xaxis_ticks(ax, major=True, minor=True):
+    if major:
+        for tic in ax.xaxis.get_major_ticks():
+            tic.tick1line.set_visible(False)
+            tic.tick2line.set_visible(False)
+    if minor:
+        for tic in ax.xaxis.get_minor_ticks():
+            tic.tick1line.set_visible(False)
+            tic.tick2line.set_visible(False)
 
 def get_cumulative_inset(f, type2shift_score, top_n, plot_params):
     # Get plotting params
