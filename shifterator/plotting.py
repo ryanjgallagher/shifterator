@@ -80,7 +80,7 @@ def get_plot_params(plot_params, show_score_diffs):
     if 'label_fontsize' not in plot_params:
         plot_params['label_fontsize'] = 13
     if 'tick_format' not in plot_params:
-        tick_format = '{:.1f}'
+        plot_params['tick_format'] = '{:.1f}'
     if 'xtick_fontsize' not in plot_params:
         plot_params['xtick_fontsize'] = 14
     if 'ytick_fontsize' not in plot_params:
