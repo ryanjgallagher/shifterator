@@ -415,10 +415,10 @@ class Shift:
         elif 'title' not in kwargs:
             s_avg_1 = self.get_weighted_score(self.type2freq_1,self.type2score_1)
             s_avg_2 = self.get_weighted_score(self.type2freq_2,self.type2score_2)
-            title = r'$\Phi_{\Omega^{(2)}}$: $s_{avg}^{(1)}=$'+'{0:.2f}'\
-                    .format(s_avg_1)+'\n'\
-                    +r'$\Phi_{\Omega^{(1)}}$: $s_{avg}^{(2)}=$'+'{0:.2f}'\
-                    .format(s_avg_2)
+            title = '{}: '.format(kwargs['system_names'][0])\
+                    + r'$\Phi_{avg}=$'+'{0:.2f}'.format(s_avg_1)+'\n'\
+                    +'{}: '.format(kwargs['system_names'][1])\
+                    + r'$\Phi_{avg}=$'+'{0:.2f}'.format(s_avg_2)
             kwargs['title'] = title
         ax.set_title(kwargs['title'], fontsize=kwargs['title_fontsize'])
 
