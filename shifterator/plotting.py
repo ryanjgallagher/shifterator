@@ -7,7 +7,6 @@ Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
 Requires: Python 3
 
 TODO:
-- Make func for missing type labels and add param for setting borrowing symbol
 - Add params for explicitly setting fonts
 - Add doc strings
 """
@@ -70,7 +69,11 @@ def get_plot_params(plot_params, show_score_diffs):
     if 'xlabel' not in plot_params:
         plot_params['xlabel'] = r'Per type average score shift $\delta s_{avg,r}$ (%)'
     if 'ylabel' not in plot_params:
-        plot_params['ylabel'] = r'Type rank $r$'
+        plot_params['ylabel'] = r'Type rank'
+    if 'cumulative_xlabel' not in plot_params:
+        plot_params['cumulative_xlabel'] = '$\sum \delta \Phi_{\\tau}$'
+    if 'cumulative_ylabel' not in plot_params:
+        plot_params['cumulative_ylabel'] = ''
     if 'xlabel_fontsize' not in plot_params:
         plot_params['xlabel_fontsize'] = 20
     if 'ylabel_fontsize' not in plot_params:
@@ -100,7 +103,7 @@ def get_plot_params(plot_params, show_score_diffs):
     if 'remove_yticks' not in plot_params:
         plot_params['remove_yticks'] = False
     if 'invisible_spines' not in plot_params:
-        plot_params['invisible_spines'] = [] 
+        plot_params['invisible_spines'] = []
 
     return plot_params
 
@@ -457,9 +460,10 @@ def get_cumulative_inset(f, type2shift_score, top_n, plot_params):
     # Make tick labels smaller
     for ticks in [in_ax.xaxis.get_major_ticks(), in_ax.yaxis.get_major_ticks()]:
         for tick in ticks:
-            tick.label.set_fontsize(12)
+            tick.label.set_fontsize(11)
     # Set labels
-    in_ax.set_xlabel('$\sum^r \delta \Phi_{\\tau}(T^{(1)}, T^{(2)})$', fontsize=12)
+    in_ax.set_xlabel(plot_params['cumulative_xlabel'], fontsize=12)
+    in_ax.set_ylabel(plot_params['cumulative_ylabel'], fontsize=12)
     # Make background transparent
     in_ax.patch.set_alpha(0)
 
