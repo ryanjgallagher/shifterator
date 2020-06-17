@@ -447,7 +447,6 @@ def get_cumulative_inset(f, type2shift_score, top_n, normalization, norm, plot_p
         if plot_params['cumulative_xlabel'] is None:
             plot_params['cumulative_xlabel'] = '$\sum \delta \Phi_{\\tau}$'
     cum_scores = np.cumsum(scores)
-    print(cum_scores[-10:])
     # Plot cumulative difference
     left, bottom, width, height = inset_pos
     in_ax = f.add_axes([left, bottom, width, height])
