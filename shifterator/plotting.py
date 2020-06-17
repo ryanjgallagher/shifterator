@@ -471,7 +471,7 @@ def get_cumulative_inset(f, type2shift_score, top_n, normalization, norm, plot_p
         if plot_params['cumulative_xticks'] is None:
             plot_params['cumulative_xticks'] = [-100, -75, -50, -25, 0]
         if plot_params['cumulative_xticklabels'] is None:
-            plot_params['cumulative_xticklabels'] = ['100', '', '-50', '', '0']
+            plot_params['cumulative_xticklabels'] = ['-100', '', '-50', '', '0']
     in_ax.set_xticks(plot_params['cumulative_xticks'])
     in_ax.set_xticklabels(plot_params['cumulative_xticklabels'], fontsize=11)
     # Make tick labels smaller
