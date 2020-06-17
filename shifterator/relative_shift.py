@@ -2,7 +2,6 @@
 relative_shift.py
 
 TODO:
-- Add option to get simple contributions for entropy, KLD, JSD (no breakdown)
 - Change the axis / title labels for shifts
 """
 
@@ -20,7 +19,8 @@ from .helper import *
 # ------------------------------------------------------------------------------
 class RelativeShift(shifterator.Shift):
     def __init__(self, reference, comparison, type2score_ref=None,
-                 type2score_comp=None, stop_lens=None, reference_value=None):
+                 type2score_comp=None, stop_lens=None, reference_value=None,
+                 normalization='variation'):
         """
         Shift object for calculating the relative shift of a comparison system
         from a reference system
@@ -45,7 +45,8 @@ class RelativeShift(shifterator.Shift):
                                    type2score_1=type2score_ref,
                                    type2score_2=type2score_comp,
                                    stop_lens=stop_lens,
-                                   reference_value=reference_value)
+                                   reference_value=reference_value,
+                                   normalization=normalization)
         # Set new names for interpretability (takes up memory...)
         self.type2freq_ref = self.type2freq_1
         self.type2freq_comp = self.type2freq_2
@@ -54,8 +55,9 @@ class RelativeShift(shifterator.Shift):
 
 
 class SentimentShift(RelativeShift):
-    def __init__(self, reference, comparison, sent_dict_ref='labMT_english',
-                 sent_dict_comp=None, stop_lens=None, reference_value=None):
+    def __init__(self, reference, comparison, type2score_ref='labMT_english',
+                 type2score_comp=None, stop_lens=None, reference_value=None,
+                 normalization='variation'):
         """
         Shift object for calculating the relative shift in sentiment of a
         comparison text from a reference text
@@ -78,8 +80,9 @@ class SentimentShift(RelativeShift):
             the reference score from which to calculate the deviation. If None,
             defaults to the average sentiment of reference
         """
-        RelativeShift.__init__(self, reference, comparison, sent_dict_ref,
-                               sent_dict_comp, stop_lens, reference_value)
+        RelativeShift.__init__(self, reference, comparison, type2score_ref,
+                               type2score_comp, stop_lens, reference_value,
+                               normalization)
 
 class EntropyShift(RelativeShift):
     """
@@ -99,7 +102,8 @@ class EntropyShift(RelativeShift):
         the reference score from which to calculate the deviation. If None,
         defaults to the entropy of reference
     """
-    def __init__(self, reference, comparison, base=2, stop_lens=None):
+    def __init__(self, reference, comparison, base=2, stop_lens=None,
+                 reference_value=0, normalization='variation'):
         # Get surprisal scores
         type2p_ref,type2p_comp,type2s_ref,type2s_comp = get_surprisal_scores(reference,
                                                                              comparison,
@@ -113,14 +117,16 @@ class EntropyShift(RelativeShift):
                 type2s_comp[t] = 0
         # Initialize shift
         RelativeShift.__init__(self, reference, comparison, type2s_ref,
-                               type2s_comp, stop_lens, reference_value=0)
+                               type2s_comp, stop_lens,
+                               reference_value=reference_value,
+                               normalization=normalization)
         self.type2p_ref = type2p_ref
         self.type2p_comp = type2p_comp
 
-    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+    def get_shift_graph(self, top_n=50, text_size_inset=True,
                         cumulative_inset=True, show_plot=True, filename=None,
                         detailed=False, **kwargs):
-        RelativeShift.get_shift_graph(self, top_n=top_n, normalize=normalize,
+        RelativeShift.get_shift_graph(self, top_n=top_n,
                                       text_size_inset=text_size_inset,
                                       cumulative_inset=cumulative_inset,
                                       show_plot=show_plot, filename=filename,
@@ -142,7 +148,8 @@ class KLDivergenceShift(RelativeShift):
         denotes intervals that should be excluded when calculating shift
         scores
     """
-    def __init__(self, reference, comparison, base=2, stop_lens=None):
+    def __init__(self, reference, comparison, base=2, stop_lens=None,
+                 reference_value=0, normalization='variation'):
         # Check that KLD is well defined
         reference_types = set(reference.keys())
         comparison_types = set(comparison.keys())
@@ -158,14 +165,16 @@ class KLDivergenceShift(RelativeShift):
                                                                              base=2, alpha=1)
         # Initialize shift
         RelativeShift.__init__(self, comparison, comparison, type2s_ref,
-                               type2s_comp, stop_lens, reference_value=0)
+                               type2s_comp, stop_lens,
+                               reference_value=reference_value,
+                               normalization=normalization)
         self.type2p_ref = type2p_ref
         self.type2p_comp = type2p_comp
 
-    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+    def get_shift_graph(self, top_n=50, text_size_inset=True,
                         cumulative_inset=True, show_plot=True, filename=None,
                         detailed=False, **kwargs):
-        RelativeShift.get_shift_graph(self, top_n=top_n, normalize=normalize,
+        RelativeShift.get_shift_graph(self, top_n=top_n,
                                       text_size_inset=text_size_inset,
                                       cumulative_inset=cumulative_inset,
                                       show_plot=show_plot, filename=filename,

@@ -71,9 +71,13 @@ def get_plot_params(plot_params, show_score_diffs):
     if 'ylabel' not in plot_params:
         plot_params['ylabel'] = r'Type rank'
     if 'cumulative_xlabel' not in plot_params:
-        plot_params['cumulative_xlabel'] = '$\sum \delta \Phi_{\\tau}$'
+        plot_params['cumulative_xlabel'] = None
     if 'cumulative_ylabel' not in plot_params:
         plot_params['cumulative_ylabel'] = ''
+    if 'cumulative_xticks' not in plot_params:
+        plot_params['cumulative_xticks'] = None
+    if 'cumulative_xticklabels' not in plot_params:
+        plot_params['cumulative_xticklabels'] = None
     if 'xlabel_fontsize' not in plot_params:
         plot_params['xlabel_fontsize'] = 20
     if 'ylabel_fontsize' not in plot_params:
@@ -428,13 +432,22 @@ def remove_xaxis_ticks(ax, major=True, minor=True):
             tic.tick1line.set_visible(False)
             tic.tick2line.set_visible(False)
 
-def get_cumulative_inset(f, type2shift_score, top_n, plot_params):
+def get_cumulative_inset(f, type2shift_score, top_n, normalization, norm, plot_params):
     # Get plotting params
     inset_pos = plot_params['pos_cumulative_inset']
     # Get cumulative scores
-    scores = sorted([100 * s for s in type2shift_score.values()],
-                     key=lambda x:abs(x), reverse=True)
+    if normalization == 'variation':
+        scores = sorted([100 * np.abs(s) for s in type2shift_score.values()],
+                         key=lambda x:abs(x), reverse=True)
+        if plot_params['cumulative_xlabel'] is None:
+            plot_params['cumulative_xlabel'] = '$\sum | \delta \Phi_{\\tau} |$'
+    else:
+        scores = sorted([100 * s for s in type2shift_score.values()],
+                         key=lambda x:abs(x), reverse=True)
+        if plot_params['cumulative_xlabel'] is None:
+            plot_params['cumulative_xlabel'] = '$\sum \delta \Phi_{\\tau}$'
     cum_scores = np.cumsum(scores)
+    print(cum_scores[-10:])
     # Plot cumulative difference
     left, bottom, width, height = inset_pos
     in_ax = f.add_axes([left, bottom, width, height])
@@ -447,20 +460,27 @@ def get_cumulative_inset(f, type2shift_score, top_n, plot_params):
     # Reverse the y-axis
     y_min,y_max = in_ax.get_ylim()
     in_ax.set_ylim((y_max, y_min))
-    # Set x-axis limits
+    # Set xticks
+    # TODO: these defaults are unappealing if score goes way past 100 or -100
     total_score = cum_scores[-1]
-    x_min,x_max = in_ax.get_xlim()
-    if np.sign(total_score) == -1:
-        in_ax.set_xlim((x_min, 0))
+    if np.sign(total_score) == 1:
+        if plot_params['cumulative_xticks'] is None:
+            plot_params['cumulative_xticks'] = [0, 25, 50, 75, 100]
+        if plot_params['cumulative_xticklabels'] is None:
+            plot_params['cumulative_xticklabels'] = ['0', '','50', '', '100']
     else:
-        in_ax.set_xlim((0, x_max))
+        if plot_params['cumulative_xticks'] is None:
+            plot_params['cumulative_xticks'] = [-100, -75, -50, -25, 0]
+        if plot_params['cumulative_xticklabels'] is None:
+            plot_params['cumulative_xticklabels'] = ['100', '', '-50', '', '0']
+    in_ax.set_xticks(plot_params['cumulative_xticks'])
+    in_ax.set_xticklabels(plot_params['cumulative_xticklabels'], fontsize=11)
+    # Make tick labels smaller
+    for tick in in_ax.yaxis.get_major_ticks():
+        tick.label.set_fontsize(11)
     # Plot top_n line
     x_min,x_max = in_ax.get_xlim()
-    in_ax.plot([x_min,x_max], [top_n,top_n], '-', color='black', linewidth=0.5)
-    # Make tick labels smaller
-    for ticks in [in_ax.xaxis.get_major_ticks(), in_ax.yaxis.get_major_ticks()]:
-        for tick in ticks:
-            tick.label.set_fontsize(11)
+    in_ax.hlines(top_n, x_min, x_max, linestyle='-', color='black', linewidth=0.5)
     # Set labels
     in_ax.set_xlabel(plot_params['cumulative_xlabel'], fontsize=12)
     in_ax.set_ylabel(plot_params['cumulative_ylabel'], fontsize=12)

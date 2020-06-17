@@ -169,7 +169,17 @@ def get_type_surprisals(type2p, base=2, alpha=1):
     alpha: float
         currently not implemented, but left for later updates
     """
-    type2surprise = {t : -1*log(p, base) for t,p in type2p.items()}
+    #type2surprise = {t : -1*log(p, base) for t,p in type2p.items()}
+    type2surprise = dict()
+    for t,p in type2p.items():
+        try:
+            type2surprise[t] = -1*log(p, base)
+        except:
+            print(t)
+            print(p)
+            print(base)
+            print()
+            raise
     return type2surprise
 
 def get_type_logs(type2p, base=2, alpha=1, force_zero=False):

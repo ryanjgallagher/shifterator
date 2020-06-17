@@ -25,7 +25,8 @@ from .plotting import *
 # ------------------------------------------------------------------------------
 class Shift:
     def __init__(self, system_1, system_2, type2score_1=None, type2score_2=None,
-                 reference_value=None, stop_lens=None, encoding='utf-8'):
+                 reference_value=None, stop_lens=None, normalization='variation',
+                 encoding='utf-8'):
         """
         Shift object for calculating weighted scores of two systems of types,
         and the shift between them
@@ -48,12 +49,18 @@ class Shift:
         stop_lens: iterable of 2-tuples, optional
             denotes intervals that should be excluded when calculating shift
             scores
+        normalization: str
+            if 'variation', normalizes shift scores so that the sum of
+            their absolute values sums to 1 or -1. If 'trajectory', normalizes
+            them so that the sum of shift scores is 1 or -1. The trajectory
+            normalization cannot be applied if the total shift score is 0, so
+            scores are left unnormalized if 'trajectory' is specified
         encoding: str, optional
             encoding for reading in a lexicon included in Shifterator
         """
         # Set type2freq dictionaries
-        self.type2freq_1 = system_1
-        self.type2freq_2 = system_2
+        self.type2freq_1 = system_1.copy()
+        self.type2freq_2 = system_2.copy()
         # Set type2score dictionaries
         if type2score_1 is not None and type2score_2 is not None:
             self.type2score_1 = get_score_dictionary(type2score_1, encoding)
@@ -100,13 +107,9 @@ class Shift:
         else:
             self.reference_value = self.get_weighted_score(self.type2freq_1,
                                                            self.type2score_1)
-        # Set default score shift values
-        self.diff = None
-        self.type2p_diff = None
-        self.type2s_diff = None
-        self.type2p_avg = None
-        self.type2s_ref_diff = None
-        self.type2shift_score = None
+        # Get shift scores
+        self.normalization = normalization
+        self.get_shift_scores(details=False)
 
     def get_types(self, type2freq_1, type2score_1, type2freq_2, type2score_2):
         """
@@ -156,7 +159,7 @@ class Shift:
 
     def get_shift_scores(self, type2freq_1=None, type2score_1=None,
                          type2freq_2=None, type2score_2=None,
-                         reference_value=None, normalize=True, details=False):
+                         reference_value=None, details=False):
         """
         Calculates the type shift scores between two systems
 
@@ -171,8 +174,6 @@ class Shift:
         reference_value: float
             the reference score from which to calculate the deviation. If None,
             defaults to the weighted score given by type2freq_1 and type2score_1
-        normalize: bool
-            if True normalizes shift scores so they sum to 1 or -1
 
         Returns
         -------
@@ -236,9 +237,15 @@ class Shift:
         # Normalize the total shift scores
         total_diff = sum(type2shift_score.values())
         self.diff = total_diff
-        if normalize:
-            type2shift_score = {t : shift_score/abs(total_diff) for t,shift_score
-                                in type2shift_score.items()}
+        if self.normalization == 'variation':
+            abs_sum = sum(abs(s) for s in type2shift_score.values())
+            self.norm = abs_sum
+        elif self.normalization == 'trajectory' and total_diff != 0:
+            self.norm = abs(total_diff)
+        else:
+            self.norm = 1
+        type2shift_score = {t : shift_score / self.norm for t,shift_score
+                            in type2shift_score.items()}
 
         # Set results in shift object (TODO: is this unexpected behavior?)
         self.type2p_diff = type2p_diff
@@ -254,7 +261,7 @@ class Shift:
 
     def get_shift_component_sums(self, type2freq_1=None, type2score_1=None,
                                  type2freq_2=None, type2score_2=None,
-                                 reference_value=None, normalize=True):
+                                 reference_value=None):
         """
 
         """
@@ -271,8 +278,7 @@ class Shift:
         if self.type2shift_score is None:
             shift_scores = self.get_shift_scores(type2freq_1, type2score_1,
                                                  type2freq_2, type2score_2,
-                                                 reference_value, normalize,
-                                                 details=True)
+                                                 reference_value, details=True)
         else:
             shift_scores = [(t, self.type2p_diff[t], self.type2s_diff[t],
                              self.type2p_avg[t], self.type2s_ref_diff[t],
@@ -307,7 +313,7 @@ class Shift:
                 'neg_s_pos_p': neg_s_pos_p, 'neg_s_neg_p': neg_s_neg_p,
                 'pos_s': pos_s, 'neg_s': neg_s}
 
-    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+    def get_shift_graph(self, top_n=50,text_size_inset=True,
                         cumulative_inset=True, show_plot=True, filename=None,
                         **kwargs):
         """
@@ -335,8 +341,6 @@ class Shift:
         kwargs = get_plot_params(kwargs, self.show_score_diffs)
 
         # Get type score components
-        if self.type2shift_score is None:
-            self.get_shift_scores(details=False)
         type_scores = [(t, self.type2p_diff[t], self.type2s_diff[t],
                         self.type2p_avg[t], self.type2s_ref_diff[t],
                         self.type2shift_score[t]) for t in self.type2s_diff]
@@ -346,11 +350,7 @@ class Shift:
         type_scores.reverse()
 
         # Get bar heights and colors
-        if normalize:
-            norm = abs(self.diff)
-        else:
-            norm = 1
-        bar_dims = get_bar_dims(type_scores, norm, kwargs)
+        bar_dims = get_bar_dims(type_scores, self.norm, kwargs)
         bar_colors = get_bar_colors(type_scores, kwargs)
 
         # Initialize plot
@@ -393,7 +393,8 @@ class Shift:
 
         # Set cumulative diff inset
         if cumulative_inset:
-            f = get_cumulative_inset(f, self.type2shift_score, top_n, kwargs)
+            f = get_cumulative_inset(f, self.type2shift_score, top_n,
+                                     self.normalization, self.norm, kwargs)
         if text_size_inset:
             f = get_text_size_inset(f, self.type2freq_1, self.type2freq_2, kwargs)
         # Set guidance arrows (for relative plot)

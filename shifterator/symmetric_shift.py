@@ -28,7 +28,8 @@ class ProportionShift(shifterator.Shift):
     stop_lens: list
         currently not implemented, but left for later updates
     """
-    def __init__(self, system_1, system_2, stop_lens=None):
+    def __init__(self, system_1, system_2, stop_lens=None, reference_value=0,
+                 normalization='variation'):
         # Set relative frequency to 0 for types that don't appear
         types = set(system_1.keys()).union(system_2.keys())
         for t in types:
@@ -39,12 +40,13 @@ class ProportionShift(shifterator.Shift):
         # Initialize shift object
         shifterator.Shift.__init__(self, system_1=system_1, system_2=system_2,
                                    type2score_1=None, type2score_2=None,
-                                   reference_value=0, stop_lens=stop_lens,)
+                                   reference_value=reference_value,
+                                   stop_lens=stop_lens, normalization=normalization)
 
-    def get_shift_graph(self, top_n=50, normalize=False, text_size_inset=True,
+    def get_shift_graph(self, top_n=50, text_size_inset=True,
                         cumulative_inset=False, show_plot=True, filename=None,
                         detailed=False, **kwargs):
-        shifterator.Shift.get_shift_graph(self, top_n=top_n, normalize=normalize,
+        shifterator.Shift.get_shift_graph(self, top_n=top_n,
                                           text_size_inset=text_size_inset,
                                           cumulative_inset=cumulative_inset,
                                           show_plot=show_plot, filename=filename,
@@ -69,7 +71,7 @@ class JSDivergenceShift(shifterator.Shift):
         currently not implemented, but left for later updates
     """
     def __init__(self, system_1, system_2, base=2, weight_1=0.5, weight_2=0.5,
-                 alpha=1, stop_lens=None):
+                 alpha=1, stop_lens=None, reference_value=0, normalization='variation'):
         # Check weights
         if weight_1 + weight_2 != 1:
             raise ValueError('weight_1 and weight_2 do not sum to 1')
@@ -82,15 +84,17 @@ class JSDivergenceShift(shifterator.Shift):
         shifterator.Shift.__init__(self, system_1=system_1, system_2=system_2,
                                    type2score_1=type2score_1,
                                    type2score_2=type2score_2,
-                                   reference_value=0, stop_lens=stop_lens)
+                                   reference_value=reference_value,
+                                   normalization=normalization,
+                                   stop_lens=stop_lens)
         self.type2p_1 = type2p
         self.type2p_2 = type2q
         self.type2p_mixed = type2m
 
-    def get_shift_graph(self, top_n=50, normalize=True, text_size_inset=True,
+    def get_shift_graph(self, top_n=50, text_size_inset=True,
                         cumulative_inset=True, show_plot=True, filename=None,
                         detailed=False, show_total=False, **kwargs):
-        shifterator.Shift.get_shift_graph(self, top_n=top_n, normalize=normalize,
+        shifterator.Shift.get_shift_graph(self, top_n=top_n,
                                           text_size_inset=text_size_inset,
                                           cumulative_inset=cumulative_inset,
                                           show_plot=show_plot, filename=filename,
