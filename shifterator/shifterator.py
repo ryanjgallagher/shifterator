@@ -24,16 +24,16 @@ from .plotting import *
 # ---------------------------- GENERAL SHIFT CLASS -----------------------------
 # ------------------------------------------------------------------------------
 class Shift:
-    def __init__(self, system_1, system_2, type2score_1=None, type2score_2=None,
-                 reference_value=None, stop_lens=None, normalization='variation',
-                 encoding='utf-8'):
+    def __init__(self, type2freq_1, type2freq_2, type2score_1=None,
+                 type2score_2=None,reference_value=None, stop_lens=None,
+                 normalization='variation', encoding='utf-8'):
         """
         Shift object for calculating weighted scores of two systems of types,
         and the shift between them
 
         Parameters
         ----------
-        system_1, system_2: dict
+        type2freq_1, type2freq_2: dict
             keys are types of a system and values are frequencies
             of those types
         type2score_1, type2score_2: dict or str, optional
@@ -45,7 +45,7 @@ class Shift:
             other type2score dict
         reference_value: float, optional
             the reference score from which to calculate the deviation. If None,
-            defaults to the weighted score of system_1
+            defaults to the weighted score of type2freq_1
         stop_lens: iterable of 2-tuples, optional
             denotes intervals that should be excluded when calculating shift
             scores
@@ -59,8 +59,8 @@ class Shift:
             encoding for reading in a lexicon included in Shifterator
         """
         # Set type2freq dictionaries
-        self.type2freq_1 = system_1.copy()
-        self.type2freq_2 = system_2.copy()
+        self.type2freq_1 = type2freq_1.copy()
+        self.type2freq_2 = type2freq_2.copy()
         # Set type2score dictionaries
         if type2score_1 is not None and type2score_2 is not None:
             self.type2score_1 = get_score_dictionary(type2score_1, encoding)
@@ -167,10 +167,10 @@ class Shift:
         ----------
         type2freq_1, type2freq_2: dict
             keys are types and values are frequencies. If None, defaults to the
-            system_1 and system_2 type2freq dicts respectively
+            type2freq_1 and type2freq_2 respectively
         type2score_1, type2score_2: dict
             keys are types and values are scores. If None, defaults to the
-            system_1 and system_2 type2score dicts respectively
+            type2freq_1 and type2freq_2 respectively
         reference_value: float
             the reference score from which to calculate the deviation. If None,
             defaults to the weighted score given by type2freq_1 and type2score_1
@@ -313,7 +313,7 @@ class Shift:
                 'neg_s_pos_p': neg_s_pos_p, 'neg_s_neg_p': neg_s_neg_p,
                 'pos_s': pos_s, 'neg_s': neg_s}
 
-    def get_shift_graph(self, top_n=50,text_size_inset=True,
+    def get_shift_graph(self, top_n=50, text_size_inset=True,
                         cumulative_inset=True, show_plot=True, filename=None,
                         **kwargs):
         """

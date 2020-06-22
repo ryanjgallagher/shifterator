@@ -1,7 +1,5 @@
 """
 helper.py
-
-Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
 """
 import os
 import pkgutil
