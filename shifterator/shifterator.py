@@ -1,8 +1,6 @@
 """
 shifterator.py
 
-Requires: Python 3
-
 TODO:
 - Add funcs to shift class that allow for easy updating of type2freq dicts
 - Make it easy to remove / reset the filter. This will involve having to hold
@@ -24,57 +22,57 @@ from .plotting import *
 # ---------------------------- GENERAL SHIFT CLASS -----------------------------
 # ------------------------------------------------------------------------------
 class Shift:
-    def __init__(self, type2freq_1, type2freq_2, type2score_1=None,
-                 type2score_2=None,reference_value=None, stop_lens=None,
-                 normalization='variation', encoding='utf-8'):
-        """
-        Shift object for calculating weighted scores of two systems of types,
-        and the shift between them
+    """
+    Shift object for calculating weighted scores of two systems of types,
+    and the shift between them
 
-        Parameters
-        ----------
-        type2freq_1, type2freq_2: dict
-            keys are types of a system and values are frequencies
-            of those types
-        type2score_1, type2score_2: dict or str, optional
-            if dict, types are keys and values are "scores" associated with each
-            type (e.g., sentiment). If str, either the name of a score dict or
-            file path to a score dict, where types and scores are given on each
-            line, separated by commas. If None and other type2score is None,
-            defaults to uniform scores across types. Otherwise defaults to the
-            other type2score dict
-        reference_value: float, optional
-            the reference score from which to calculate the deviation. If None,
-            defaults to the weighted score of type2freq_1
-        stop_lens: iterable of 2-tuples, optional
-            denotes intervals that should be excluded when calculating shift
-            scores
-        normalization: str
-            if 'variation', normalizes shift scores so that the sum of
-            their absolute values sums to 1 or -1. If 'trajectory', normalizes
-            them so that the sum of shift scores is 1 or -1. The trajectory
-            normalization cannot be applied if the total shift score is 0, so
-            scores are left unnormalized if 'trajectory' is specified
-        encoding: str, optional
-            encoding for reading in a lexicon included in Shifterator
-        """
+    Parameters
+    ----------
+    type2freq_1, type2freq_2: dict
+        Keys are types of a system and values are frequencies of those types
+    type2score_1, type2score_2: dict or str, optional
+        If dict, types are keys and values are scores associated with each
+        type. If str, the name of a score lexicon included in Shifterator.
+        If None and other type2score is None, defaults to uniform scores
+        across types. Otherwise defaults to the other type2score dict
+    reference_value: str or float, optional
+        The reference score to use to partition scores into two different
+        regimes. If 'average', uses the average score according to type2freq_1
+        and type2score_1. If None and a lexicon is selected for type2score,
+        uses the respective middle point in that lexicon's scale. Otherwise
+        if None, uses zero as the reference point
+    stop_lens: iterable of 2-tuples, optional
+        Denotes intervals of scores that should be excluded when calculating
+        shift scores, and types with scores in this range will be excluded
+        from shift calculations
+    normalization: str, optional
+        If 'variation', normalizes shift scores so that the sum of
+        their absolute values sums to 1. If 'trajectory', normalizes
+        them so that the sum of shift scores is 1 or -1. The trajectory
+        normalization cannot be applied if the total shift score is 0, so
+        scores are left unnormalized if the total is 0 and 'trajectory' is
+        specified
+    """
+    def __init__(self, type2freq_1, type2freq_2, type2score_1=None,
+                 type2score_2=None, reference_value=None, stop_lens=None,
+                 normalization='variation'):
         # Set type2freq dictionaries
         self.type2freq_1 = type2freq_1.copy()
         self.type2freq_2 = type2freq_2.copy()
         # Set type2score dictionaries
         if type2score_1 is not None and type2score_2 is not None:
-            self.type2score_1,lex_ref = get_score_dictionary(type2score_1, encoding)
-            self.type2score_2,_ = get_score_dictionary(type2score_2, encoding)
+            self.type2score_1,lex_ref = get_score_dictionary(type2score_1)
+            self.type2score_2,_ = get_score_dictionary(type2score_2)
             if type2score_1 != type2score_2:
                 self.show_score_diffs = True
             else:
                 self.show_score_diffs = False
         elif type2score_1 is not None:
-            self.type2score_1,lex_ref = get_score_dictionary(type2score_1, encoding)
+            self.type2score_1,lex_ref = get_score_dictionary(type2score_1)
             self.type2score_2 = self.type2score_1
             self.show_score_diffs = False
         elif type2score_2 is not None:
-            self.type2score_2,lex_ref = get_score_dictionary(type2score_2, encoding)
+            self.type2score_2,lex_ref = get_score_dictionary(type2score_2)
             self.type2score_1 = self.type2score_2
             self.show_score_diffs = False
         else:
@@ -92,8 +90,8 @@ class Shift:
                                                                        stop_lens)
             self.stop_words = sw_1.union(sw_2)
         # Get common vocabulary
-        self.types = self.get_types(self.type2freq_1, self.type2score_1,
-                                    self.type2freq_2, self.type2score_2)
+        self.types = get_types(self.type2freq_1, self.type2score_1,
+                               self.type2freq_2, self.type2score_2)
         # Assume missing scores in each vocabulary (TODO: add options)
         missing_scores_info = get_missing_scores(self.type2score_1, self.type2score_2)
         self.type2score_1 = missing_scores_info[0]
@@ -112,41 +110,22 @@ class Shift:
             if lex_ref is not None:
                 self.reference_value = lex_ref
             else:
-                0
+                self.reference_value = 0
 
         # Get shift scores
         self.normalization = normalization
         self.get_shift_scores(details=False)
 
-    def get_types(self, type2freq_1, type2score_1, type2freq_2, type2score_2):
-        """
-        Returns the common "vocabulary" between the types of both systems and
-        the types in the dictionaries
-
-        Parameters
-        ----------
-        type2freq: dict
-            keys are types and values are frequencies
-        type2score: dict
-            keys are types and values are scores
-        """
-        # Get observed types that are also in score dicts
-        types_1 = set(type2freq_1.keys()).intersection(set(type2score_1.keys()))
-        types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
-        types = types_1.union(types_2)
-        return types
-
     def get_weighted_score(self, type2freq, type2score):
         """
-        Calculate the average score of the system specified by the frequencies
-        and scores of the types in that system
+        Calculate an average score according to a set of frequencies and scores
 
         Parameters
         ----------
         type2freq: dict
-            keys are types and values are frequencies
+            Keys are types and values are frequencies
         type2score: dict
-            keys are types and values are scores
+            Keys are types and values are scores
 
         Returns
         -------
@@ -159,73 +138,52 @@ class Shift:
             return
         # Get weighted score and total frequency
         f_total = sum([freq for t,freq in type2freq.items() if t in types])
-        s_weighted = sum([type2score[t]*freq for t,freq in type2freq.items()
+        s_weighted = sum([type2score[t] * freq for t,freq in type2freq.items()
                           if t in types])
         s_avg = s_weighted / f_total
         return s_avg
 
-    def get_shift_scores(self, type2freq_1=None, type2score_1=None,
-                         type2freq_2=None, type2score_2=None,
-                         reference_value=None, details=False):
+    def get_shift_scores(self, details=False):
         """
-        Calculates the type shift scores between two systems
+        Calculates the type shift scores between the two systems
 
         Parameters
         ----------
-        type2freq_1, type2freq_2: dict
-            keys are types and values are frequencies. If None, defaults to the
-            type2freq_1 and type2freq_2 respectively
-        type2score_1, type2score_2: dict
-            keys are types and values are scores. If None, defaults to the
-            type2freq_1 and type2freq_2 respectively
-        reference_value: float
-            the reference score from which to calculate the deviation. If None,
-            defaults to the weighted score given by type2freq_1 and type2score_1
+        details: boolean
+            If true, returns each of the major components of each type's shift
+            score, along with the overall shift scores. Otherwise, only returns
+            the overall shift scores
 
         Returns
         -------
         type2p_diff: dict
-            if details is True, returns dict where keys are types and values are
+            If details is True, returns dict where keys are types and values are
             the difference in relatively frequency, i.e. p_i,2 - p_i,1 for type i
         type2s_diff: dict,
-            if details is True, returns dict where keys are types and values are
+            If details is True, returns dict where keys are types and values are
             the relative differences in score, i.e. s_i,2 - s_i,1 for type i
         type2p_avg: dict,
-            if details is True, returns dict where keys are types and values are
+            If details is True, returns dict where keys are types and values are
             the average relative frequencies, i.e. 0.5*(p_i,1+p_i,2) for type i
         type2s_ref_diff: dict
-            if details is True, returns dict where keys are types and values are
+            If details is True, returns dict where keys are types and values are
             relative deviation from reference score, i.e. 0.5*(s_i,2+s_i,1)-s_ref
             for type i
         type2shift_score: dict
-            keys are types and values are shift scores
+            Keys are types and values are shift scores. The overall shift scores
+            are normalized according to the `normalization` parameter of the
+            Shift object
         """
-        # Check input of type2freq and type2score dicts
-        if type2freq_1 is None:
-            type2freq_1 = self.type2freq_1
-        if type2score_1 is None:
-            type2score_1 = self.type2score_1
-        if type2freq_2 is None:
-            type2freq_2 = self.type2freq_2
-        if type2score_2 is None:
-            type2score_2 = self.type2score_2
-        if reference_value is None:
-            s_avg_ref = self.reference_value
-        else:
-            s_avg_ref = reference_value
-
-        # Get type vocabulary
-        types = self.get_types(type2freq_1, type2score_1,
-                               type2freq_2, type2score_2)
+        s_avg_ref = self.reference_value
 
         # Get total frequencies
-        total_freq_1 = sum([freq for t,freq in type2freq_1.items() if t in types])
-        total_freq_2 = sum([freq for t,freq in type2freq_2.items() if t in types])
+        total_freq_1 = sum([freq for t,freq in self.type2freq_1.items() if t in self.types])
+        total_freq_2 = sum([freq for t,freq in self.type2freq_2.items() if t in self.types])
         # Get relative frequency of types in both systems
-        type2p_1 = {t:type2freq_1[t]/total_freq_1 if t in type2freq_1 else 0
-                    for t in types}
-        type2p_2 = {t:type2freq_2[t]/total_freq_2 if t in type2freq_2 else 0
-                    for t in types}
+        type2p_1 = {t:self.type2freq_1[t] / total_freq_1 if t in self.type2freq_1 else 0
+                    for t in self.types}
+        type2p_2 = {t:self.type2freq_2[t] / total_freq_2 if t in self.type2freq_2 else 0
+                    for t in self.types}
 
         # Calculate shift components
         type2p_avg = dict()
@@ -233,13 +191,14 @@ class Shift:
         type2s_diff = dict()
         type2s_ref_diff = dict()
         type2shift_score = dict()
-        for t in types:
-            type2p_avg[t] = 0.5*(type2p_1[t]+type2p_2[t])
-            type2p_diff[t] = type2p_2[t]-type2p_1[t]
-            type2s_diff[t] = type2score_2[t]-type2score_1[t]
-            type2s_ref_diff[t] = 0.5*(type2score_2[t]+type2score_1[t])-s_avg_ref
-            type2shift_score[t] = type2p_diff[t]*type2s_ref_diff[t]\
-                                  +type2s_diff[t]*type2p_avg[t]
+        for t in self.types:
+            type2p_avg[t] = 0.5 * (type2p_1[t] + type2p_2[t])
+            type2p_diff[t] = type2p_2[t] - type2p_1[t]
+            type2s_diff[t] = self.type2score_2[t] - self.type2score_1[t]
+            type2s_ref_diff[t] = 0.5 * (self.type2score_2[t] + self.type2score_1[t])\
+                                 - s_avg_ref
+            type2shift_score[t] = type2p_diff[t] * type2s_ref_diff[t]\
+                                 + type2s_diff[t] * type2p_avg[t]
 
         # Normalize the total shift scores
         total_diff = sum(type2shift_score.values())
@@ -254,7 +213,7 @@ class Shift:
         type2shift_score = {t : shift_score / self.norm for t,shift_score
                             in type2shift_score.items()}
 
-        # Set results in shift object (TODO: is this unexpected behavior?)
+        # Set results in shift object
         self.type2p_diff = type2p_diff
         self.type2s_diff = type2s_diff
         self.type2p_avg = type2p_avg
@@ -266,26 +225,21 @@ class Shift:
         else:
             return type2shift_score
 
-    def get_shift_component_sums(self, type2freq_1=None, type2score_1=None,
-                                 type2freq_2=None, type2score_2=None,
-                                 reference_value=None):
+    def get_shift_component_sums(self):
         """
+        Calculates the cumulative contribution of each component of the different
+        kinds of shift scores.
 
+        Returns
+        -------
+        Dictionary with six keys, one for each of the different component
+        contributions: pos_s_pos_p, pos_s_neg_p, neg_s_pos_p, neg_s_neg_p,
+        pos_s, neg_s. Values are the total contribution from that component
+        across all types
         """
-        # Check input of type2freq and type2score dicts
-        if type2freq_1 is None:
-            type2freq_1 = self.type2freq_1
-        if type2score_1 is None:
-            type2score_1 = self.type2score_1
-        if type2freq_2 is None:
-            type2freq_2 = self.type2freq_2
-        if type2score_2 is None:
-            type2score_2 = self.type2score_2
         # Get shift scores
         if self.type2shift_score is None:
-            shift_scores = self.get_shift_scores(type2freq_1, type2score_1,
-                                                 type2freq_2, type2score_2,
-                                                 reference_value, details=True)
+            shift_scores = self.get_shift_scores(details=True)
         else:
             shift_scores = [(t, self.type2p_diff[t], self.type2s_diff[t],
                              self.type2p_avg[t], self.type2s_ref_diff[t],
@@ -328,16 +282,18 @@ class Shift:
 
         Parameters
         ----------
-        top_n: int
+        top_n: int, optional
             Display the top_n types as sorted by their absolute contribution to
             the difference between systems
-        cumulative_inset, text_size_inset: bool
-            Whether to show insets showing the cumulative contribution to the
-            shift by ranked types, and the relative sizes of each system
-        show_plot: bool
-            Whether to show plot on finish
-        filename: str
-            If not None, name of the file for saving the word shift graph
+        cumulative_inset: bool, optional
+            Whether to show an inset showing the cumulative contributions to the
+            shift by ranked types
+        text_size_inset: bool, optional
+            Whether to show an inset showing the relative sizes of each system
+        show_plot: bool, optional
+            Whether to show plot when it is done being rendered
+        filename: str, optional
+            If not None, name of the file for saving the shift graph
 
         Returns
         -------
@@ -383,6 +339,7 @@ class Shift:
         # Set font type
         if kwargs['serif']:
             set_serif()
+        # Set labels
         if kwargs['detailed']:
             ax = set_bar_labels(f, ax, top_n, labels, bar_dims['label_heights'],
                                 comp_bar_heights, kwargs)
@@ -393,20 +350,17 @@ class Shift:
         # Add center dividing line
         ax.axvline(0, ls='-', color='black', lw=1.0, zorder=20)
 
-        # Add dividing line between words and component bars
+        # Add dividing line between types and component bars
         ax.axhline(top_n+1, ls='-', color='black', lw=0.7, zorder=20)
         if kwargs['show_total']:
             ax.axhline(top_n+2.75, ls='-', color='black', lw=0.5, zorder=20)
 
-        # Set cumulative diff inset
+        # Set insets
         if cumulative_inset:
             f = get_cumulative_inset(f, self.type2shift_score, top_n,
-                                     self.normalization, self.norm, kwargs)
+                                     self.normalization, kwargs)
         if text_size_inset:
             f = get_text_size_inset(f, self.type2freq_1, self.type2freq_2, kwargs)
-        # Set guidance arrows (for relative plot)
-        #if guidance:
-        #    ax = get_guidance_annotations(ax, top_n, annotation_text=None)
 
         # Make x-tick labels bigger, flip y-axis ticks and label every 5th one
         ax = set_ticks(ax, top_n, kwargs)

@@ -9,12 +9,39 @@ from .entropy import *
 
 class WeightedAvgShift(shifterator.Shift):
     """
-    Shift object for calculating differences in weighted averages between two
-    systems
+    Shift object for calculating weighted scores of two systems of types,
+    and the shift between them
+
+    Parameters
+    ----------
+    type2freq_1, type2freq_2: dict
+        Keys are types of a system and values are frequencies of those types
+    type2score_1, type2score_2: dict or str, optional
+        If dict, types are keys and values are scores associated with each
+        type. If str, the name of a score lexicon included in Shifterator.
+        If None and other type2score is None, defaults to uniform scores
+        across types. Otherwise defaults to the other type2score dict
+    reference_value: str or float, optional
+        The reference score to use to partition scores into two different
+        regimes. If 'average', uses the average score according to type2freq_1
+        and type2score_1. If None and a lexicon is selected for type2score,
+        uses the respective middle point in that lexicon's scale. Otherwise
+        if None, uses zero as the reference point
+    stop_lens: iterable of 2-tuples, optional
+        Denotes intervals of scores that should be excluded when calculating
+        shift scores, and types with scores in this range will be excluded
+        from shift calculations
+    normalization: str, optional
+        If 'variation', normalizes shift scores so that the sum of
+        their absolute values sums to 1. If 'trajectory', normalizes
+        them so that the sum of shift scores is 1 or -1. The trajectory
+        normalization cannot be applied if the total shift score is 0, so
+        scores are left unnormalized if the total is 0 and 'trajectory' is
+        specified
     """
     def __init__(self, type2freq_1, type2freq_2, type2score_1=None,
-                 type2score_2=None,reference_value=None, stop_lens=None,
-                 normalization='variation', encoding='utf-8'):
+                 type2score_2=None, reference_value=None, stop_lens=None,
+                 normalization='variation'):
         shifterator.Shift.__init__(self,
                                    type2freq_1=type2freq_1,
                                    type2freq_2=type2freq_2,
@@ -22,8 +49,7 @@ class WeightedAvgShift(shifterator.Shift):
                                    type2score_2=type2score_2,
                                    reference_value=reference_value,
                                    stop_lens=None,
-                                   normalization=normalization,
-                                   encoding=encoding)
+                                   normalization=normalization)
 
 class ProportionShift(shifterator.Shift):
     """
@@ -33,12 +59,9 @@ class ProportionShift(shifterator.Shift):
     Parameters
     __________
     type2freq_1, type2freq_2: dict
-        keys are types of a system and values are frequencies of those types
-    stop_lens: list
-        currently not implemented, but left for later updates
+        Keys are types of a system and values are frequencies of those types
     """
-    def __init__(self, type2freq_1, type2freq_2, stop_lens=None,
-                 reference_value=0, normalization='variation'):
+    def __init__(self, type2freq_1, type2freq_2):
         # Set relative frequency to 0 for types that don't appear
         type2freq_1 = type2freq_1.copy()
         type2freq_2 = type2freq_2.copy()
@@ -54,9 +77,9 @@ class ProportionShift(shifterator.Shift):
                                    type2freq_2=type2freq_2,
                                    type2score_1=None,
                                    type2score_2=None,
-                                   reference_value=reference_value,
-                                   stop_lens=stop_lens,
-                                   normalization=normalization)
+                                   reference_value=0,
+                                   stop_lens=None,
+                                   normalization='variation')
 
     def get_shift_graph(self, top_n=50, show_plot=True, detailed=False,
                         text_size_inset=True, cumulative_inset=True,
@@ -81,14 +104,28 @@ class EntropyShift(shifterator.Shift):
     Parameters
     ----------
     type2freq_1, type2freq_2: dict
-        keys are types of a system and values are frequencies of those types
+        Keys are types of a system and values are frequencies of those types
     base: float, optional
-        base of the logarithm for calculating entropy
+        Base of the logarithm for calculating entropy
+    alpha: float, optional
+        The parameter for the generalized Tsallis entropy. Setting `alpha=1`
+        recovers the Shannon entropy. Higher `alpha` emphasizes more common
+        types, lower `alpha` emphasizes less common types
+        For details: https://en.wikipedia.org/wiki/Tsallis_entropy
     stop_lens: iterable of 2-tuples, optional
         denotes intervals that should be excluded when calculating shift
         scores
-    reference_value: float, optional
-        the reference score from which to calculate the deviation
+    reference_value: str or float, optional
+        The reference score to use to partition scores into two different
+        regimes. If 'average', uses the average score according to type2freq_1
+        and type2score_1. Otherwise, uses zero as the reference point
+    normalization: str, optional
+        If 'variation', normalizes shift scores so that the sum of
+        their absolute values sums to 1. If 'trajectory', normalizes
+        them so that the sum of shift scores is 1 or -1. The trajectory
+        normalization cannot be applied if the total shift score is 0, so
+        scores are left unnormalized if the total is 0 and 'trajectory' is
+        specified
     """
     def __init__(self, type2freq_1, type2freq_2, base=2, alpha=1, stop_lens=None,
                  reference_value=0, normalization='variation'):
@@ -133,15 +170,22 @@ class KLDivergenceShift(shifterator.Shift):
     Parameters
     ----------
     type2freq_1, type2freq_2: dict
-        keys are types of a system and values are frequencies of those types.
+        Keys are types of a system and values are frequencies of those types.
         The KLD will be computed with respect type2freq_1, i.e. D(T2 || T1).
         For the KLD to be well defined, all types must have nonzero frequencies
         in both type2freq_1 and type2_freq2
     base: float, optional
-        base of the logarithm for calculating entropy
+        Base of the logarithm for calculating entropy
     stop_lens: iterable of 2-tuples, optional
-        denotes intervals that should be excluded when calculating shift
+        Denotes intervals that should be excluded when calculating shift
         scores
+    normalization: str, optional
+        If 'variation', normalizes shift scores so that the sum of
+        their absolute values sums to 1. If 'trajectory', normalizes
+        them so that the sum of shift scores is 1 or -1. The trajectory
+        normalization cannot be applied if the total shift score is 0, so
+        scores are left unnormalized if the total is 0 and 'trajectory' is
+        specified
     """
     def __init__(self, type2freq_1, type2freq_2, base=2, stop_lens=None,
                  reference_value=0, normalization='variation'):
@@ -196,18 +240,29 @@ class JSDivergenceShift(shifterator.Shift):
     systems
 
     Parameters
-    __________
+    ----------
     type2freq_1, type2freq_2: dict
-        keys are types of a system and values are frequencies of those types
+        Keys are types of a system and values are frequencies of those types
     weight_1, weight_2: float
-        relative weights of type2freq_1 and type2frq_2 when constructing their
+        Relative weights of type2freq_1 and type2frq_2 when constructing their
         mixed distribution. Should sum to 1
-    base: int
-        the base for the logarithm when computing entropy for the JSD
-    alpha: float
-        currently not implemented, but left for later updates
-    reference_value: float, optional
-        the reference score from which to calculate the score deviation
+    base: float, optional
+        Base of the logarithm for calculating entropy
+    alpha: float, optional
+        The parameter for the generalized Tsallis entropy. Setting `alpha=1`
+        recovers the Shannon entropy. Higher `alpha` emphasizes more common
+        types, lower `alpha` emphasizes less common types
+        For details: https://en.wikipedia.org/wiki/Tsallis_entropy
+    reference_value: str or float, optional
+        The reference score to use to partition scores into two different
+        regimes. Defaults to zero as the reference point
+    normalization: str, optional
+        If 'variation', normalizes shift scores so that the sum of
+        their absolute values sums to 1. If 'trajectory', normalizes
+        them so that the sum of shift scores is 1 or -1. The trajectory
+        normalization cannot be applied if the total shift score is 0, so
+        scores are left unnormalized if the total is 0 and 'trajectory' is
+        specified
     """
     def __init__(self, type2freq_1, type2freq_2, base=2, weight_1=0.5,
                  weight_2=0.5, alpha=1, stop_lens=None, reference_value=0,

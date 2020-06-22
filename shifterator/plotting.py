@@ -2,18 +2,31 @@
 """
 plotting.py
 
-Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-
-Requires: Python 3
-
 TODO:
 - Add params for explicitly setting fonts
-- Add doc strings
 """
 import numpy as np
 from matplotlib import rcParams
 
 def get_plot_params(plot_params, show_score_diffs):
+    """
+    Sets default plotting values for shift graphs that are not set by the user
+
+    Parameters
+    ----------
+    plot_params: dict
+        Dictionary of kwarg plot parameters passed to the shift graph
+    show_score_diffs: boolean
+        Whether to show the difference in scores at the top of the plot
+        This is passed as a separate parameter because it is derived from the
+        shift itself
+
+    Returns
+    -------
+    plot_params: dict
+        Dictionary where keys are names of parameters and values are their
+        set value
+    """
     if 'detailed' not in plot_params:
         plot_params['detailed'] = True
     if 'show_total' not in plot_params:
@@ -117,13 +130,37 @@ def set_serif():
 
 def get_bar_dims(type_scores, norm, plot_params):
     """
+    Gets the height and location of every bar needed to plot each type's
+    contribution.
 
+    Parameters
+    ----------
+    type_scores: list of tuples
+        List of tuples of the form (type,p_diff,s_diff,p_avg,s_ref_diff,shift_score)
+        for every type scored in the two systems. This is the detailed output
+        of a Shift object's `get_shift_scores`
+    norm: float
+        The factor by which to normalize all the component scores
+    plot_params: dict
+        Dictionary of plotting parameters. Here, `all_pos_contributions` is used
+
+    Returns
+    -------
+    Dictionary with nine keys: `p_solid_heights`, `s_solid_bases`,
+    `s_solid_heights`, `p_fade_heights`, `p_fade_bases`, `s_fade_bases`,
+    `s_fade_heights`, `total_heights`, `label_heights`. Values are lists are the
+    corresponding bar dimensions for each word
+
+    'p' stands for the component with p_diff
+    's' stands for the component with s_diff.
+    'solid' indicates the part of the contribution that is not alpha faded
+    'base' stands for where the bottom of the bar is
+    'height' stands for the height relative to the base
+        Note, `p_solid_base` would always be 0, which is why it is not included
+    `total_heights` is the overall contribution for simple (not detailed) shift
+        graphs (base is always 0).
+    `label_heights` is the label position after making up for counteracting components
     """
-    # 'p' for p_diff component, 's' for s_diff component
-    # 'solid' for part of comp that is not alpha faded, 'faded' otherwise
-    # 'base' for where bottom of bar is, 'height' for height from that base
-    #     note, 'p_solid_base' is always 0
-    # 'total' for total contribution for simple word shift graphs (base always 0)
     dims = {'p_solid_heights':[], 's_solid_bases':[], 's_solid_heights':[],
             'p_fade_heights':[], 'p_fade_bases':[], 's_fade_bases':[],
             's_fade_heights':[], 'total_heights':[], 'label_heights':[]}
@@ -167,7 +204,24 @@ def get_bar_dims(type_scores, norm, plot_params):
 
 def get_bar_colors(type_scores, plot_params):
     """
+    Returns the component colors of each type's contribution bars.
 
+    Parameters
+    ----------
+    type_scores: list of tuples
+        List of tuples of the form (type,p_diff,s_diff,p_avg,s_ref_diff,shift_score)
+        for every type scored in the two systems. This is the detailed output
+        of a Shift object's `get_shift_scores`
+    plot_params: dict
+        Dictionary of plotting parameters. Here, `all_pos_contributions` and
+        `score_colors` are used
+
+    Returns
+    -------
+    Dictionary with three keys: `p`, `s`, and `total`. Values are lists of the
+    colors to assign to the p_diff and s_diff components respectively. If just
+    the overall contributions are being shown in a simple (not detailed) shift
+    graph, then the `total` colors are used
     """
     score_colors = plot_params['score_colors']
     bar_colors = {'p':[], 's':[], 'total':[]}
@@ -205,6 +259,25 @@ def get_bar_colors(type_scores, plot_params):
 
 def plot_contributions(ax, top_n, bar_dims, bar_colors, plot_params):
     """
+    Plots all of the type contributions as horizontal bars
+
+    Parameters
+    ----------
+    ax: Matplotlib ax
+        Current ax of the shift graph
+    top_n: int
+        The number of types being plotted on the shift graph
+    bar_dims: dict
+        Dictionary where keys are names of different types of bar dimensions and
+        values are lists of those dimensions for each word type. See `get_bar_dims`
+        for details
+    bar_colors: dict
+        Dictionary where keys are names of different types of bar colors and
+        values are lists of those colors for each word type. See `get_bar_colors`
+        for details
+    plot_params: dict
+        Dictionary of plotting parameters. Here, `alpha_fade`, `bar_width`,
+        `detailed`, and `bar_linewidth` are used
     """
     # Set plotting params
     ys = range(1, top_n + 1)
@@ -234,6 +307,20 @@ def plot_contributions(ax, top_n, bar_dims, bar_colors, plot_params):
     return ax
 
 def get_bar_order(plot_params):
+    """
+    Gets which cumulative bars to show at the top of the graph given what level
+    of detail is being specified
+
+    Parameters
+    ----------
+    plot_params: dict
+        Dictionary of plotting parameters. Here, `all_pos_contributions`,
+        `detailed`, `show_score_diffs`, and `show_total` are used
+
+    Returns
+    -------
+    List of strs indicating which cumulative bars to show
+    """
     if plot_params['detailed']:
         if plot_params['show_score_diffs']:
             bar_order = ['neg_s', 'pos_s', 'neg_s_neg_p', 'neg_s_pos_p',
@@ -253,6 +340,30 @@ def get_bar_order(plot_params):
 
 def plot_total_contribution_sums(ax, total_comp_sums, bar_order, top_n, bar_dims,
                                  plot_params):
+    """
+    Plots the cumulative contribution bars at the top of the shift graph
+
+    Parameters
+    ----------
+    ax: Matplotlib ax
+        Current ax of the shift graph
+    total_comp_sums: dict
+        Dictionary with six keys, one for each of the different component
+        contributions, where values are floats indicating the total contribution.
+        See `get_shift_component_sums` for details
+    bar_order: list of strs
+        List of the names of which bars to show at the top of the shift graph.
+        See `get_bar_order` for more detail
+    top_n: int
+        The number of types being plotted on the shift graph
+    bar_dims: dict
+        Dictionary where keys are names of different types of bar dimensions and
+        values are lists of those dimensions for each word type. See `get_bar_dims`
+        for details
+    plot_params: dict
+        Dictionary of plotting parameters. Here, `all_pos_contributions`,
+        `show_total`, `score_colors`, `bar_width`, and `bar_linewidth` are used
+    """
     # Get contribution bars
     comp_bar_heights = []
     for b in bar_order:
@@ -309,6 +420,9 @@ def plot_total_contribution_sums(ax, total_comp_sums, bar_order, top_n, bar_dims
     return ax, comp_bar_heights, bar_order
 
 def get_bar_type_space(ax, plot_params):
+    """
+    Gets the amount of space to place in between the ends of bars and labels
+    """
     # Estimate bar_type_space as a fraction of largest xlim
     x_width = 2 * abs(max(ax.get_xlim(), key=lambda x: abs(x)))
     bar_type_space = plot_params['bar_type_space_scaling'] * x_width
@@ -316,6 +430,25 @@ def get_bar_type_space(ax, plot_params):
 
 def set_bar_labels(f, ax, top_n, type_labels, full_bar_heights, comp_bar_heights,
                    plot_params):
+    """
+    Sets the labels on the end of each type's contribution bar
+
+    Parameters
+    ----------
+    ax: Matplotlib ax
+        Current ax of the shift graph
+    top_n: int
+        The number of types being plotted on the shift graph
+    type_labels: list of strs
+        Sorted list of labels to plot on the shift graph
+    full_bar_heights: list of floats
+        List of heights of where to place the type contribution labels
+    comp_bar_heights: list of floats
+        List of heights of where to place the cumulative contribution labels
+    plot_params: dict
+        Dictionary of plotting parameters. Here, `show_total`, `label_fontsize`,
+        and `bar_type_space_scaling`
+    """
     # Put together all bar heights
     n = len(full_bar_heights)
     all_bar_ends = full_bar_heights + comp_bar_heights
@@ -353,6 +486,26 @@ def set_bar_labels(f, ax, top_n, type_labels, full_bar_heights, comp_bar_heights
 
 def adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs, bar_type_space,
                            plot_params):
+    """
+    Attempts to readjusts the axes to account for newly plotted labels
+
+    Parameters
+    ----------
+    f: Matplotlib figure
+        Current figure of the shift graph
+    ax: Matplotlib ax
+        Current ax of the shift graph
+    bar_ends: list of floats
+        List of heights of where to place the type contribution labels
+    comp_bars: list of floats
+        List of heights of where to place the cumulative contribution labels
+    text_objs: list of Matplotlib text objects
+        List of text after being plotted on the ax
+    bar_type_space: float
+        How much space to put between bar ends and labels
+    plot_parms: dict
+        Dictionary of plotting parameters. Here, `width_scaling` is used
+    """
     # Get the max length
     lengths = []
     for bar_n,bar_end in enumerate(bar_ends):
@@ -369,17 +522,29 @@ def adjust_axes_for_labels(f, ax, bar_ends, comp_bars, text_objs, bar_type_space
     lengths += comp_bars
     # Get max length
     width_scaling = plot_params['width_scaling']
-    max_length = width_scaling*abs(sorted(lengths, key=lambda x: abs(x),
-                                          reverse=True)[0])
+    max_length = width_scaling * abs(sorted(lengths, key=lambda x: abs(x),
+                                            reverse=True)[0])
     # Symmetrize the axis around that max length
     ax.set_xlim((-1 * max_length, max_length))
 
     return ax
 
 def set_ticks(ax, top_n, plot_params):
+    """
+    Sets ticks and tick labels of the shift graph
+
+    Parameters
+    ----------
+    ax: Matplotlib ax
+        Current ax of the shift graph
+    top_n: int
+        The number of types being plotted on the shift graph
+    plot_parms: dict
+        Dictionary of plotting parameters. Here, `all_pos_contributions`,
+        `tick_format`, `xtick_fontsize`, `ytick_fontsize`, `remove_xticks`,
+        and `remove_yticks` are used
+    """
     tick_format = plot_params['tick_format']
-    remove_xticks = plot_params['remove_xticks']
-    remove_yticks = plot_params['remove_yticks']
 
     # Make xticks larger
     if not plot_params['all_pos_contributions']:
@@ -388,20 +553,30 @@ def set_ticks(ax, top_n, plot_params):
         x_ticks = [tick_format.format(abs(t)) for t in ax.get_xticks()]
     ax.set_xticklabels(x_ticks, fontsize=plot_params['xtick_fontsize'])
     # Flip y-axis tick labels and make sure every 5th tick is labeled
-    y_ticks = list(range(1,top_n,5))+[top_n]
-    y_tick_labels = [str(n) for n in (list(range(top_n,1,-5))+['1'])]
+    y_ticks = list(range(1, top_n,5)) + [top_n]
+    y_tick_labels = [str(n) for n in (list(range(top_n, 1,-5)) + ['1'])]
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_tick_labels, fontsize=plot_params['ytick_fontsize'])
 
     # Remove all x or y axis ticks
-    if remove_xticks:
+    if plot_params['remove_xticks']:
         remove_xaxis_ticks(ax)
-    if remove_yticks:
+    if plot_params['remove_yticks']:
         remove_yaxis_ticks(ax)
 
     return ax
 
 def set_spines(ax, plot_params):
+    """
+    Sets spines of the shift graph to be invisible if chosen by the user
+
+    Parameters
+    ----------
+    ax: Matplotlib ax
+        Current ax of the shift graph
+    plot_parms: dict
+        Dictionary of plotting parameters. Here `invisible_spines` is used
+    """
     spines = plot_params['invisible_spines']
     if spines:
         for spine in spines:
@@ -413,6 +588,9 @@ def set_spines(ax, plot_params):
     return ax
 
 def remove_yaxis_ticks(ax, major=True, minor=True):
+    """
+    Removes all y-axis ticks on the shift graph
+    """
     if major:
         for tic in ax.yaxis.get_major_ticks():
             tic.tick1line.set_visible(False)
@@ -423,6 +601,9 @@ def remove_yaxis_ticks(ax, major=True, minor=True):
             tic.tick2line.set_visible(False)
 
 def remove_xaxis_ticks(ax, major=True, minor=True):
+    """
+    Removes all x-axis ticks on the shift graph
+    """
     if major:
         for tic in ax.xaxis.get_major_ticks():
             tic.tick1line.set_visible(False)
@@ -432,7 +613,27 @@ def remove_xaxis_ticks(ax, major=True, minor=True):
             tic.tick1line.set_visible(False)
             tic.tick2line.set_visible(False)
 
-def get_cumulative_inset(f, type2shift_score, top_n, normalization, norm, plot_params):
+def get_cumulative_inset(f, type2shift_score, top_n, normalization, plot_params):
+    """
+    Plots the cumulative contribution inset on the shift graph
+
+    Parameters
+    ----------
+    f: Matpotlib figure
+        Current figure of the shift graph
+    type2shift_score: dict
+        Keys are types and values are their total shift score
+    top_n: int
+        The number of types being plotted on the shift graph
+    normalization: str
+        The type of normalization being used on the shift scores, either
+        'variation' (sum of abs values of scores) or 'trajectory' (sum of scores)
+    plot_params: dict
+        Dictionary of plotting parameters. Here, `pos_cumulative_inset`,
+        `cumulative_xlabel`, `cumulative_ylabel`, `cumulative_xticks`,
+        `cumulative_xticklabels`, `cumulative_yticks`, `cumulative_yticklabels`
+        are used
+    """
     # Get plotting params
     inset_pos = plot_params['pos_cumulative_inset']
     # Get cumulative scores
@@ -489,6 +690,19 @@ def get_cumulative_inset(f, type2shift_score, top_n, normalization, norm, plot_p
     return f
 
 def get_text_size_inset(f, type2freq_1, type2freq_2, plot_params):
+    """
+    Plots the relative text size inset on the shift graph
+
+    Parameters
+    ----------
+    f: Matpotlib figure
+        Current figure of the shift graph
+    type2freq_1, type2freq_2: dict
+        Keys are types, values are their frequencies
+    plot_params: dict
+        Dictionary of plotting parameters. Here, pos_text_size_inset` and
+        `pos_text_size_inset` are used
+    """
     # Get plotting params
     system_names = plot_params['system_names']
     inset_pos = plot_params['pos_text_size_inset']
@@ -518,21 +732,3 @@ def get_text_size_inset(f, type2freq_1, type2freq_2, plot_params):
     in_ax.set_alpha(0)
 
     return f
-
-def get_guidance_annotations(ax, top_n, score_diff=None, annotation_text=None):
-    """
-    Note: this annotation only make sense for relative shifts
-    """
-    x_min,x_max = ax.get_xlim()
-    y = np.floor(top_n / 2)+0.5 # depends on width=0.8 for bars
-    ax.arrow(0, y, -0.985*x_max, 0, color='#D0D0D0', zorder=1, head_width=0.4,
-             head_length=0.4, length_includes_head=True, head_starts_at_zero=False)
-    ax.arrow(0, y, 0.985*x_max, 0, color='#D0D0D0', zorder=1, head_width=0.4,
-             head_length=0.4, length_includes_head=True, head_starts_at_zero=False)
-    left_text = 'Contributes to $T^{(comp)}$\nBeing Less Positive'
-    right_text = 'Contributes to $T^{(comp)}$\nBeing More Positive'
-    ax.text(-0.9*x_max, y, left_text, ha='left', va='bottom', fontsize=7,
-            color='#808080', zorder=10)
-    ax.text(0.9*x_max, y, right_text, ha='right', va='bottom', fontsize=7,
-            color='#808080', zorder=10)
-    return ax

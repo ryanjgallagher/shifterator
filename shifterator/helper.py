@@ -5,6 +5,24 @@ import os
 import pkgutil
 import collections
 
+def get_types(type2freq_1, type2score_1, type2freq_2, type2score_2):
+    """
+    Returns the common "vocabulary" between the types of both systems and
+    the types in the dictionaries
+
+    Parameters
+    ----------
+    type2freq: dict
+        Keys are types and values are frequencies
+    type2score: dict
+        Keys are types and values are scores
+    """
+    # Get observed types that are also in score dicts
+    types_1 = set(type2freq_1.keys()).intersection(set(type2score_1.keys()))
+    types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
+    types = types_1.union(types_2)
+    return types
+
 def filter_by_scores(type2freq, type2score, stop_lens):
     """
     Loads a dictionary of type scores
@@ -12,11 +30,11 @@ def filter_by_scores(type2freq, type2score, stop_lens):
     Parameters
     ----------
     type2freq: dict
-        keys are types, values are frequencies of those types
+        Keys are types, values are frequencies of those types
     type2score: dict
-        keys are types, values are scores associated with those types
+        Keys are types, values are scores associated with those types
     stop_lens: iteratble of 2-tuples
-        denotes intervals that should be excluded when calculating shift scores
+        Denotes intervals that should be excluded when calculating shift scores
 
     Returns
     -------
@@ -41,20 +59,23 @@ def filter_by_scores(type2freq, type2score, stop_lens):
 
     return (type2freq_new, type2score_new, stop_words)
 
-def get_score_dictionary(scores, encoding='utf-8'):
+def get_score_dictionary(scores):
     """
     Loads a dictionary of type scores
 
     Parameters
     ----------
     scores: dict or str
-        if dict, then returns the dict automatically. If str, then it is either
-        the name of a lexicon included in Shifterator
+        If dict, then returns the dict automatically. If str, then the name of a
+        lexicon included in Shifterator
 
     Returns
     -------
-    type2score, dict
-        dictionary where keys are types and values are scores of those types
+    type2score: dict
+        Dictionary where keys are types and values are scores of those types
+    lexicon_ref: float
+        If a lexicon was loaded, the middle point of the lexicon's scale.
+        Otherwise, None is returned
     """
     if isinstance(scores, collections.Mapping):
         return scores.copy(),None
@@ -63,7 +84,7 @@ def get_score_dictionary(scores, encoding='utf-8'):
     try:
         lexicon = scores.split('_')[0]
         score_f = 'lexicons/{}/{}.tsv'.format(lexicon, scores)
-        all_scores = pkgutil.get_data(__name__, score_f).decode(encoding)
+        all_scores = pkgutil.get_data(__name__, score_f).decode('utf-8')
         if 'labMT' in lexicon:
             lexicon_ref = 5
         elif 'SocialSent' in lexicon:
@@ -92,12 +113,12 @@ def get_missing_scores(type2score_1, type2score_2):
     Parameters
     ----------
     type2score_1, type2score_2: dict
-        keys are types and values are scores
+        Keys are types and values are scores
 
     Output
     ------
     type2score_1, type2score_2: dict
-        keys are types and values are scores, updated to have scores across all
+        Keys are types and values are scores, updated to have scores across all
         types between the two score dictionaries
     """
     missing_types = set()
