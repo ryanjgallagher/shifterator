@@ -5,7 +5,7 @@ import warnings
 import numpy as np
 
 import shifterator.shifterator as shifterator
-from .helper import *
+from .entropy import *
 
 class WeightedAvgShift(shifterator.Shift):
     """
@@ -60,7 +60,9 @@ class ProportionShift(shifterator.Shift):
 
     def get_shift_graph(self, top_n=50, show_plot=True, detailed=False,
                         text_size_inset=True, cumulative_inset=True,
-                        filename=None, **kwargs):
+                        title=None, filename=None, **kwargs):
+        if title is None:
+            title = ''
         shifterator.Shift.get_shift_graph(self,
                                           top_n=top_n,
                                           text_size_inset=text_size_inset,
@@ -69,11 +71,13 @@ class ProportionShift(shifterator.Shift):
                                           show_plot=show_plot,
                                           filename=filename,
                                           show_total=False,
+                                          title=title,
                                           **kwargs)
 
 class EntropyShift(shifterator.Shift):
     """
-    Shift object for calculating the shift in entropy between two systems
+    Shift object for calculating the shift in entropy between two systems. The
+    entropy word shift graph defaults to a *less* detailed layout
 
     Parameters
     ----------
@@ -88,22 +92,16 @@ class EntropyShift(shifterator.Shift):
         the reference score from which to calculate the deviation. If None,
         defaults to the entropy according to type2freq_1
     """
-    def __init__(self, type2freq_1, type2freq_2, base=2, stop_lens=None,
+    def __init__(self, type2freq_1, type2freq_2, base=2, alpha=1, stop_lens=None,
                  reference_value=None, normalization='variation'):
-        # Get surprisal scores
+        # Get relative frequencies
         type2freq_1 = type2freq_1.copy()
         type2freq_2 = type2freq_2.copy()
-        type2p_1,type2p_2,type2s_1,type2s_2 = get_surprisal_scores(type2freq_1,
-                                                                   type2freq_2,
-                                                                   base=2,
-                                                                   alpha=1)
-        # Set zero surprisal scores for types that do not appear
-        types = set(type2s_1.keys()).union(set(type2s_2.keys()))
-        for t in types:
-            if t not in type2s_1:
-                type2s_1[0] = 0
-            elif t not in type2s_2:
-                type2s_2[t] = 0
+        type2p_1 = get_relative_freqs(type2freq_1)
+        type2p_2 = get_relative_freqs(type2freq_2)
+        # Get entropy scores
+        type2s_1,type2s_2 = get_entropy_scores(type2p_1, type2p_2, base, alpha)
+
         # Initialize shift
         shifterator.Shift.__init__(self,
                                    type2freq_1=type2freq_1,
@@ -115,6 +113,7 @@ class EntropyShift(shifterator.Shift):
                                    normalization=normalization)
         self.type2p_1 = type2p_1
         self.type2p_2 = type2p_2
+        self.alpha = alpha
 
     def get_shift_graph(self, top_n=50, show_plot=True, detailed=False,
                         text_size_inset=True, cumulative_inset=True,
@@ -131,7 +130,7 @@ class EntropyShift(shifterator.Shift):
 class KLDivergenceShift(shifterator.Shift):
     """
     Shift object for calculating the Kullback-Leibler divergence (KLD) between
-    two systems
+    two systems. The KLD word shift graph defaults to a *less* detailed layout
 
     Parameters
     ----------
@@ -153,20 +152,23 @@ class KLDivergenceShift(shifterator.Shift):
         types_2 = set(type2freq_2.keys())
         if len(types_1.symmetric_difference(types_2)) > 0:
             err = 'There are types that appear in either type2freq_1 or '\
-                  + 'type2freq_2 but not the other: KL divergence is not '\
+                  + 'type2freq_2 but not the other: the KL divergence is not '\
                   + 'well defined'
             raise ValueError(err)
-        # Get surprisal scores
+
+        # Get relative frequencies
         type2freq_1 = type2freq_1.copy()
         type2freq_2 = type2freq_2.copy()
-        type2p_1,type2p_2,type2s_1,type2s_2 = get_surprisal_scores(type2freq_1,
-                                                                   type2freq_2,
-                                                                   base=2,
-                                                                   alpha=1)
+        type2p_1 = get_relative_freqs(type2freq_1)
+        type2p_2 = get_relative_freqs(type2freq_2)
+        # Get surprisal scores
+        type2s_1 = {t:p * -1 * log(p, base) for t,p in type2p_1.items()}
+        type2s_2 = {t:p * -1 * log(p, base) for t,p in type2p_2.items()}
+
         # Initialize shift
         shifterator.Shift.__init__(self,
-                                   type2freq_1=type2freq_2,
-                                   type2freq_2=type2freq_2,
+                                   type2freq_1=type2p_2,
+                                   type2freq_2=type2p_2,
                                    type2score_1=type2s_1,
                                    type2score_2=type2s_2,
                                    stop_lens=stop_lens,
@@ -177,72 +179,81 @@ class KLDivergenceShift(shifterator.Shift):
 
     def get_shift_graph(self, top_n=50, show_plot=True, detailed=False,
                         text_size_inset=True, cumulative_inset=True,
-                        filename=None, **kwargs):
+                        title=None, filename=None, **kwargs):
+        if title is None:
+            title = ''
         shifterator.Shift.get_shift_graph(self,
                                           top_n=top_n,
                                           text_size_inset=text_size_inset,
                                           cumulative_inset=cumulative_inset,
                                           detailed=detailed,
                                           show_plot=show_plot,
+                                          title=title,
                                           filename=filename,
                                           **kwargs)
 
 class JSDivergenceShift(shifterator.Shift):
     """
     Shift object for calculating the Jensen-Shannon divergence (JSD) between two
-    systems
+    systems. The JSD word shift graph defaults to a *less* detailed layout
 
     Parameters
     __________
     type2freq_1, type2freq_2: dict
         keys are types of a system and values are frequencies of those types
-    base: int
-        the base for the logarithm when computing entropy for the JSD
     weight_1, weight_2: float
         relative weights of type2freq_1 and type2frq_2 when constructing their
         mixed distribution. Should sum to 1
-    reference_value: float, optional
-        the reference score from which to calculate the deviation. If None,
-        defaults to the entropy of the mixed distribution
+    base: int
+        the base for the logarithm when computing entropy for the JSD
     alpha: float
         currently not implemented, but left for later updates
+    reference_value: float, optional
+        the reference score from which to calculate the deviation
     """
     def __init__(self, type2freq_1, type2freq_2, base=2, weight_1=0.5,
-                 weight_2=0.5, alpha=1, stop_lens=None, reference_value=None,
+                 weight_2=0.5, alpha=1, stop_lens=None, reference_value=0,
                  normalization='variation'):
         # Check weights
         if weight_1 + weight_2 != 1:
             raise ValueError('weight_1 and weight_2 do not sum to 1')
-        # Get JSD scores
+
+        # Get relative frequencies
         type2freq_1 = type2freq_1.copy()
         type2freq_2 = type2freq_2.copy()
-        type2p,type2q,type2m,type2score_1,type2score_2 = get_jsd_scores(type2freq_1,
-                                                                        type2freq_2,
-                                                                        weight_1=weight_1,
-                                                                        weight_2=weight_2,
-                                                                        base=base,
-                                                                        alpha=alpha)
-        # Get entropy of mixture distribution
-        if reference_value is None:
-            type2score_m = get_type_surprisals(type2m, base=base, alpha=alpha)
-            reference_value = sum([m * type2score_m[t] for t,m in type2m.items()])
+        type2p_1 = get_relative_freqs(type2freq_1)
+        type2p_2 = get_relative_freqs(type2freq_2)
+        # Get shift scores
+        type2m,type2s_1,type2s_2 = get_jsd_scores(type2p_1,
+                                                  type2p_2,
+                                                  weight_1=weight_1,
+                                                  weight_2=weight_2,
+                                                  base=base,
+                                                  alpha=alpha)
 
         # Initialize shift object
         shifterator.Shift.__init__(self,
                                    type2freq_1=type2freq_1,
                                    type2freq_2=type2freq_2,
-                                   type2score_1=type2score_1,
-                                   type2score_2=type2score_2,
+                                   type2score_1=type2s_1,
+                                   type2score_2=type2s_2,
                                    reference_value=reference_value,
                                    normalization=normalization,
                                    stop_lens=stop_lens)
-        self.type2p_1 = type2p
-        self.type2p_2 = type2q
-        self.type2p_mixed = type2m
+        self.type2p_1 = type2p_1
+        self.type2p_2 = type2p_2
+        self.type2m = type2m
+        self.alpha = alpha
 
     def get_shift_graph(self, top_n=50, show_plot=True, detailed=False,
                         text_size_inset=True, cumulative_inset=True,
-                        filename=None, show_total=False, **kwargs):
+                        title=None, filename=None, **kwargs):
+        if self.alpha == 1 and self.reference_value == 0:
+            all_pos_contributions = True
+        else:
+            all_pos_contributions = False
+        if title is None:
+            title = ''
         shifterator.Shift.get_shift_graph(self,
                                           top_n=top_n,
                                           text_size_inset=text_size_inset,
@@ -250,6 +261,6 @@ class JSDivergenceShift(shifterator.Shift):
                                           detailed=detailed,
                                           show_plot=show_plot,
                                           filename=filename,
-                                          show_total=show_total,
-                                          all_pos_contributions=True,
+                                          title=title,
+                                          all_pos_contributions=all_pos_contributions,
                                           **kwargs)

@@ -410,9 +410,7 @@ class Shift:
         # Set axis labels and title
         ax.set_xlabel(kwargs['xlabel'], fontsize=kwargs['xlabel_fontsize'])
         ax.set_ylabel(kwargs['ylabel'], fontsize=kwargs['ylabel_fontsize'])
-        if kwargs['all_pos_contributions'] and 'title' not in kwargs:
-            kwargs['title'] = ''
-        elif 'title' not in kwargs:
+        if 'title' not in kwargs:
             s_avg_1 = self.get_weighted_score(self.type2freq_1,self.type2score_1)
             s_avg_2 = self.get_weighted_score(self.type2freq_2,self.type2score_2)
             title = '{}: '.format(kwargs['system_names'][0])\
