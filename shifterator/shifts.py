@@ -76,8 +76,7 @@ class ProportionShift(shifterator.Shift):
 
 class EntropyShift(shifterator.Shift):
     """
-    Shift object for calculating the shift in entropy between two systems. The
-    entropy word shift graph defaults to a *less* detailed layout
+    Shift object for calculating the shift in entropy between two systems
 
     Parameters
     ----------
@@ -89,11 +88,10 @@ class EntropyShift(shifterator.Shift):
         denotes intervals that should be excluded when calculating shift
         scores
     reference_value: float, optional
-        the reference score from which to calculate the deviation. If None,
-        defaults to the entropy according to type2freq_1
+        the reference score from which to calculate the deviation
     """
     def __init__(self, type2freq_1, type2freq_2, base=2, alpha=1, stop_lens=None,
-                 reference_value=None, normalization='variation'):
+                 reference_value=0, normalization='variation'):
         # Get relative frequencies
         type2freq_1 = type2freq_1.copy()
         type2freq_2 = type2freq_2.copy()
@@ -130,7 +128,7 @@ class EntropyShift(shifterator.Shift):
 class KLDivergenceShift(shifterator.Shift):
     """
     Shift object for calculating the Kullback-Leibler divergence (KLD) between
-    two systems. The KLD word shift graph defaults to a *less* detailed layout
+    two systems
 
     Parameters
     ----------
@@ -146,7 +144,7 @@ class KLDivergenceShift(shifterator.Shift):
         scores
     """
     def __init__(self, type2freq_1, type2freq_2, base=2, stop_lens=None,
-                 reference_value=None, normalization='variation'):
+                 reference_value=0, normalization='variation'):
         # Check that KLD is well defined
         types_1 = set(type2freq_1.keys())
         types_2 = set(type2freq_2.keys())
@@ -195,7 +193,7 @@ class KLDivergenceShift(shifterator.Shift):
 class JSDivergenceShift(shifterator.Shift):
     """
     Shift object for calculating the Jensen-Shannon divergence (JSD) between two
-    systems. The JSD word shift graph defaults to a *less* detailed layout
+    systems
 
     Parameters
     __________
@@ -209,7 +207,7 @@ class JSDivergenceShift(shifterator.Shift):
     alpha: float
         currently not implemented, but left for later updates
     reference_value: float, optional
-        the reference score from which to calculate the deviation
+        the reference score from which to calculate the score deviation
     """
     def __init__(self, type2freq_1, type2freq_2, base=2, weight_1=0.5,
                  weight_2=0.5, alpha=1, stop_lens=None, reference_value=0,

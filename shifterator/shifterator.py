@@ -63,18 +63,18 @@ class Shift:
         self.type2freq_2 = type2freq_2.copy()
         # Set type2score dictionaries
         if type2score_1 is not None and type2score_2 is not None:
-            self.type2score_1 = get_score_dictionary(type2score_1, encoding)
-            self.type2score_2 = get_score_dictionary(type2score_2, encoding)
+            self.type2score_1,lex_ref = get_score_dictionary(type2score_1, encoding)
+            self.type2score_2,_ = get_score_dictionary(type2score_2, encoding)
             if type2score_1 != type2score_2:
                 self.show_score_diffs = True
             else:
                 self.show_score_diffs = False
         elif type2score_1 is not None:
-            self.type2score_1 = get_score_dictionary(type2score_1, encoding)
+            self.type2score_1,lex_ref = get_score_dictionary(type2score_1, encoding)
             self.type2score_2 = self.type2score_1
             self.show_score_diffs = False
         elif type2score_2 is not None:
-            self.type2score_2 = get_score_dictionary(type2score_2, encoding)
+            self.type2score_2,lex_ref = get_score_dictionary(type2score_2, encoding)
             self.type2score_1 = self.type2score_2
             self.show_score_diffs = False
         else:
@@ -103,10 +103,17 @@ class Shift:
 
         # Set reference value
         if reference_value is not None:
-            self.reference_value = reference_value
+            if reference_value == 'average':
+                self.reference_value = self.get_weighted_score(self.type2freq_1,
+                                                               self.type2score_1)
+            else:
+                self.reference_value = reference_value
         else:
-            self.reference_value = self.get_weighted_score(self.type2freq_1,
-                                                           self.type2score_1)
+            if lex_ref is not None:
+                self.reference_value = lex_ref
+            else:
+                0
+
         # Get shift scores
         self.normalization = normalization
         self.get_shift_scores(details=False)

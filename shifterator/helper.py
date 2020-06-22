@@ -57,13 +57,19 @@ def get_score_dictionary(scores, encoding='utf-8'):
         dictionary where keys are types and values are scores of those types
     """
     if isinstance(scores, collections.Mapping):
-        return scores.copy()
+        return scores.copy(),None
 
     # Else, load scores from predefined score file in shifterator
     try:
         lexicon = scores.split('_')[0]
         score_f = 'lexicons/{}/{}.tsv'.format(lexicon, scores)
         all_scores = pkgutil.get_data(__name__, score_f).decode(encoding)
+        if 'labMT' in lexicon:
+            lexicon_ref = 5
+        elif 'SocialSent' in lexicon:
+            lexicon_ref = 0
+        elif 'NRC' in lexicon:
+            lexicon_ref = 0.5
     except FileNotFoundError:
         raise FileNotFoundError('Lexicon does not exit in Shifterator: {}'.format(scores))
     # Parse scores from all_scores, which is just a long str
@@ -76,7 +82,7 @@ def get_score_dictionary(scores, encoding='utf-8'):
         t,s = t_s.split('\t')
         type2score[t] = float(s)
 
-    return type2score
+    return type2score,lexicon_ref
 
 def get_missing_scores(type2score_1, type2score_2):
     """
