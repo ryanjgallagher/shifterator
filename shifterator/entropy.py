@@ -1,6 +1,3 @@
-"""
-entropy.py
-"""
 import math
 from math import log
 
@@ -223,60 +220,6 @@ def get_type_surprisals(type2p, base=2, alpha=1):
         currently not implemented, but left for later updates
     """
     return {t: -math.log(p, base) for t, p in type2p.items()}
-
-
-def get_type_logs(type2p, base=2, alpha=1, force_zero=False):
-    """
-    Calculates the log relative frequency of each type in a system, i.e. log(p_i)
-
-    Parameters
-    ----------
-    type2p: dict
-        keys are types of a system and values are relative freqs of those types
-    base: int
-        the base of the logarithm
-    alpha: float
-        currently not implemented, but left for later updates
-    force_zero: boolean
-        if True, force any type with 0 probability to have log(p_i) = log(0) = 0
-        This is mathematically invalid, but a useful workaround for calculating
-        the JSD, where even though we calculate log(p) here individually, it is
-        recombined with other scores to get p * log(p), which should be 0 if
-        both p and log(p) are zero.
-    """
-    type2log = dict()
-    for t, p in type2p.items():
-        try:
-            type2log[t] = math.log(p, base)
-        except ValueError:
-            if force_zero:
-                type2log[t] = 0
-            else:
-                raise
-    return type2log
-
-
-def get_surprisal_scores(system_1, system_2, base=2, alpha=1):
-    """
-    Gets all surprisal scores necessary for calculating probability divergence
-    measures like the KLD or JSD
-
-    Parameters
-    ----------
-    system_1, system_2: dict
-        keys are types of a system and values are frequencies of those types
-    base: int
-        the base for the logarithm when computing entropy for the JSD
-    alpha: float
-        currently not implemented, but left for later updates
-    """
-    # Normalize reference and comparison frequencies
-    type2p_1 = get_relative_freqs(system_1)
-    type2p_2 = get_relative_freqs(system_2)
-    # Get surprisal of each type
-    type2surprisal_1 = get_type_surprisals(type2p_1, base=base, alpha=alpha)
-    type2surprisal_2 = get_type_surprisals(type2p_2, base=base, alpha=alpha)
-    return type2p_1, type2p_2, type2surprisal_1, type2surprisal_2
 
 
 def tsallis_entropy(prob, count, alpha=1, base=math.e):

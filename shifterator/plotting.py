@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
 

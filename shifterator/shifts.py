@@ -1,14 +1,8 @@
-"""
-shifts.py
-"""
-import warnings
-import numpy as np
-
-import shifterator.shifterator as shifterator
-from .entropy import *
+from . import entropy
+from .shifterator import Shift
 
 
-class WeightedAvgShift(shifterator.Shift):
+class WeightedAvgShift(Shift):
     """
     Shift object for calculating weighted scores of two systems of types,
     and the shift between them
@@ -51,8 +45,7 @@ class WeightedAvgShift(shifterator.Shift):
         stop_lens=None,
         normalization="variation",
     ):
-        shifterator.Shift.__init__(
-            self,
+        super().__init__(
             type2freq_1=type2freq_1,
             type2freq_2=type2freq_2,
             type2score_1=type2score_1,
@@ -63,7 +56,7 @@ class WeightedAvgShift(shifterator.Shift):
         )
 
 
-class ProportionShift(shifterator.Shift):
+class ProportionShift(Shift):
     """
     Shift object for calculating differences in proportions of types across two
     systems
@@ -85,8 +78,7 @@ class ProportionShift(shifterator.Shift):
             elif t not in type2freq_2:
                 type2freq_2[t] = 0
         # Initialize shift object
-        shifterator.Shift.__init__(
-            self,
+        super().__init__(
             type2freq_1=type2freq_1,
             type2freq_2=type2freq_2,
             type2score_1=None,
@@ -109,8 +101,7 @@ class ProportionShift(shifterator.Shift):
     ):
         if title is None:
             title = ""
-        shifterator.Shift.get_shift_graph(
-            self,
+        super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
             cumulative_inset=cumulative_inset,
@@ -123,7 +114,7 @@ class ProportionShift(shifterator.Shift):
         )
 
 
-class EntropyShift(shifterator.Shift):
+class EntropyShift(Shift):
     """
     Shift object for calculating the shift in entropy between two systems
 
@@ -167,14 +158,13 @@ class EntropyShift(shifterator.Shift):
         # Get relative frequencies
         type2freq_1 = type2freq_1.copy()
         type2freq_2 = type2freq_2.copy()
-        type2p_1 = get_relative_freqs(type2freq_1)
-        type2p_2 = get_relative_freqs(type2freq_2)
+        type2p_1 = entropy.get_relative_freqs(type2freq_1)
+        type2p_2 = entropy.get_relative_freqs(type2freq_2)
         # Get entropy scores
-        type2s_1, type2s_2 = get_entropy_scores(type2p_1, type2p_2, base, alpha)
+        type2s_1, type2s_2 = entropy.get_entropy_scores(type2p_1, type2p_2, base, alpha)
 
         # Initialize shift
-        shifterator.Shift.__init__(
-            self,
+        super().__init__(
             type2freq_1=type2freq_1,
             type2freq_2=type2freq_2,
             type2score_1=type2s_1,
@@ -197,8 +187,7 @@ class EntropyShift(shifterator.Shift):
         filename=None,
         **kwargs
     ):
-        shifterator.Shift.get_shift_graph(
-            self,
+        super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
             cumulative_inset=cumulative_inset,
@@ -209,7 +198,7 @@ class EntropyShift(shifterator.Shift):
         )
 
 
-class KLDivergenceShift(shifterator.Shift):
+class KLDivergenceShift(Shift):
     """
     Shift object for calculating the Kullback-Leibler divergence (KLD) between
     two systems
@@ -258,15 +247,14 @@ class KLDivergenceShift(shifterator.Shift):
         # Get relative frequencies
         type2freq_1 = type2freq_1.copy()
         type2freq_2 = type2freq_2.copy()
-        type2p_1 = get_relative_freqs(type2freq_1)
-        type2p_2 = get_relative_freqs(type2freq_2)
+        type2p_1 = entropy.get_relative_freqs(type2freq_1)
+        type2p_2 = entropy.get_relative_freqs(type2freq_2)
         # Get surprisal scores
-        type2s_1 = {t: p * -1 * log(p, base) for t, p in type2p_1.items()}
-        type2s_2 = {t: p * -1 * log(p, base) for t, p in type2p_2.items()}
+        type2s_1 = {t: p * -1 * entropy.log(p, base) for t, p in type2p_1.items()}
+        type2s_2 = {t: p * -1 * entropy.log(p, base) for t, p in type2p_2.items()}
 
         # Initialize shift
-        shifterator.Shift.__init__(
-            self,
+        super().__init__(
             type2freq_1=type2p_2,
             type2freq_2=type2p_2,
             type2score_1=type2s_1,
@@ -291,8 +279,7 @@ class KLDivergenceShift(shifterator.Shift):
     ):
         if title is None:
             title = ""
-        shifterator.Shift.get_shift_graph(
-            self,
+        super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
             cumulative_inset=cumulative_inset,
@@ -304,7 +291,7 @@ class KLDivergenceShift(shifterator.Shift):
         )
 
 
-class JSDivergenceShift(shifterator.Shift):
+class JSDivergenceShift(Shift):
     """
     Shift object for calculating the Jensen-Shannon divergence (JSD) between two
     systems
@@ -354,10 +341,10 @@ class JSDivergenceShift(shifterator.Shift):
         # Get relative frequencies
         type2freq_1 = type2freq_1.copy()
         type2freq_2 = type2freq_2.copy()
-        type2p_1 = get_relative_freqs(type2freq_1)
-        type2p_2 = get_relative_freqs(type2freq_2)
+        type2p_1 = entropy.get_relative_freqs(type2freq_1)
+        type2p_2 = entropy.get_relative_freqs(type2freq_2)
         # Get shift scores
-        type2m, type2s_1, type2s_2 = get_jsd_scores(
+        type2m, type2s_1, type2s_2 = entropy.get_jsd_scores(
             type2p_1,
             type2p_2,
             weight_1=weight_1,
@@ -367,8 +354,7 @@ class JSDivergenceShift(shifterator.Shift):
         )
 
         # Initialize shift object
-        shifterator.Shift.__init__(
-            self,
+        super().__init__(
             type2freq_1=type2freq_1,
             type2freq_2=type2freq_2,
             type2score_1=type2s_1,
@@ -399,8 +385,7 @@ class JSDivergenceShift(shifterator.Shift):
             all_pos_contributions = False
         if title is None:
             title = ""
-        shifterator.Shift.get_shift_graph(
-            self,
+        super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
             cumulative_inset=cumulative_inset,
