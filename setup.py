@@ -8,7 +8,7 @@ with open("requirements.txt") as f:
 
 setuptools.setup(
     name="shifterator",
-    version="0.1.1",
+    version="0.1.3",
     author="Ryan J. Gallagher",
     author_email="gallagher.r@northeastern.edu",
     description="Interpretable data visualizations for understanding how texts differ at the word level",
@@ -18,6 +18,7 @@ setuptools.setup(
     python_requires="~=3.6",
     install_requires=requirements,
     packages=setuptools.find_packages(),
+    include_package_data=True,
     keywords=[
         "natural language processing",
         "sentiment analysis",
