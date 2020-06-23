@@ -50,13 +50,15 @@ def get_plot_params(plot_params, show_score_diffs):
                                        'neg_s_neg_p': '#C4CAFC',
                                        'pos_s': '#FECC5D',
                                        'neg_s': '#9E75B7',
-                                       'pos_total': '#FFFF80',
-                                       'neg_total': '#C4CAFC',
-                                       'all_pos_pos': '#FFFF80',
-                                       'all_pos_neg': '#C4CAFC',
+                                       'pos_total': '#FECC5D',
+                                       'neg_total': '#9E75B7',
+                                       'all_pos_pos': '#FECC5D',
+                                       'all_pos_neg': '#9E75B7',
                                        'total': '#707070'}
     if 'alpha_fade' not in plot_params:
         plot_params['alpha_fade'] = 0.35
+    if 'system_names' not in plot_params:
+        plot_params['system_names']=['Sys. 1', 'Sys. 2']
     if 'symbols' not in plot_params:
         plot_params['symbols'] = {'pos_s_pos_p': u'+\u2191',
                                   'pos_s_neg_p': u'+\u2193',
@@ -64,10 +66,10 @@ def get_plot_params(plot_params, show_score_diffs):
                                   'neg_s_neg_p': u'-\u2193',
                                   'pos_s': u'\u25B3',
                                   'neg_s': u'\u25BD',
-                                  'pos_total': '',
-                                  'neg_total': '',
-                                  'all_pos_pos': 'Sys. 1',
-                                  'all_pos_neg': 'Sys. 2',
+                                  'pos_total': plot_params['system_names'][1],
+                                  'neg_total': plot_params['system_names'][0],
+                                  'all_pos_pos': plot_params['system_names'][0],
+                                  'all_pos_neg': plot_params['system_names'][1],
                                   'total': r'$\Sigma$'}
     if 'missing_symbol' not in plot_params:
         plot_params['missing_symbol'] = '*'
@@ -105,8 +107,6 @@ def get_plot_params(plot_params, show_score_diffs):
         plot_params['xtick_fontsize'] = 14
     if 'ytick_fontsize' not in plot_params:
         plot_params['ytick_fontsize'] = 14
-    if 'system_names' not in plot_params:
-        plot_params['system_names']=['Sys. 1', 'Sys. 2']
     if 'serif' not in plot_params:
         plot_params['serif'] = False
     if 'tight' not in plot_params:
