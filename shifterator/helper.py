@@ -1,9 +1,3 @@
-"""
-Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-
-TODO:
- - Allow different order entropies to be specified using alpha
-"""
 import collections
 import pkgutil
 

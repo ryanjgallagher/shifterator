@@ -1,10 +1,6 @@
 """
-Author: Ryan J. Gallagher, Network Science Institute, Northeastern University
-
 TODO:
- - Make func for missing type labels and add param for setting borrowing symbol
  - Add params for explicitly setting fonts
- - Add doc strings
 """
 import numpy as np
 from matplotlib import rcParams
