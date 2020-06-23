@@ -68,8 +68,8 @@ def get_plot_params(plot_params, show_score_diffs):
                                   'neg_s': u'\u25BD',
                                   'pos_total': plot_params['system_names'][1],
                                   'neg_total': plot_params['system_names'][0],
-                                  'all_pos_pos': plot_params['system_names'][0],
-                                  'all_pos_neg': plot_params['system_names'][1],
+                                  'all_pos_pos': plot_params['system_names'][1],
+                                  'all_pos_neg': plot_params['system_names'][0],
                                   'total': r'$\Sigma$'}
     if 'missing_symbol' not in plot_params:
         plot_params['missing_symbol'] = '*'
@@ -170,7 +170,7 @@ def get_bar_dims(type_scores, norm, plot_params):
         c_s = 100 * p_avg * s_diff / norm
         # This is for JSD to make bars face different directions based on p
         # p_diff is p_2 - p_1, so point to right if p_1 > p_2
-        if not plot_params['all_pos_contributions'] or p_diff < 0:
+        if not plot_params['all_pos_contributions'] or p_diff > 0:
             dims['total_heights'].append(c_p + c_s)
         else:
             dims['total_heights'].append(-1 * (c_p + c_s))
@@ -234,7 +234,7 @@ def get_bar_colors(type_scores, plot_params):
             else:
                 bar_colors['total'].append(score_colors['neg_total'])
         else:
-            if p_diff < 0:
+            if p_diff > 0:
                 bar_colors['total'].append(score_colors['all_pos_pos'])
             else:
                 bar_colors['total'].append(score_colors['all_pos_neg'])
