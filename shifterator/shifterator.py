@@ -309,6 +309,7 @@ class Shift:
 
     def get_shift_graph(
         self,
+        ax=None,
         top_n=50,
         text_size_inset=True,
         cumulative_inset=True,
@@ -321,6 +322,8 @@ class Shift:
 
         Parameters
         ----------
+        ax: matplotlib.pyplot.axes.Axes, optional
+            Axes to draw figure onto. Will create new axes if none are given.
         top_n: int, optional
             Display the top_n types as sorted by their absolute contribution to
             the difference between systems
@@ -365,7 +368,8 @@ class Shift:
         bar_colors = plotting.get_bar_colors(type_scores, kwargs)
 
         # Initialize plot
-        f, ax = plt.subplots(figsize=(kwargs["width"], kwargs["height"]))
+        if ax is None:
+            _, ax = plt.subplots(figsize=(kwargs["width"], kwargs["height"]))
         ax.margins(kwargs["y_margin"])
         # Plot type contributions
         ax = plotting.plot_contributions(ax, top_n, bar_dims, bar_colors, kwargs)
@@ -391,23 +395,11 @@ class Shift:
         # Set labels
         if kwargs["detailed"]:
             ax = plotting.set_bar_labels(
-                f,
-                ax,
-                top_n,
-                labels,
-                bar_dims["label_heights"],
-                comp_bar_heights,
-                kwargs,
+                ax, top_n, labels, bar_dims["label_heights"], comp_bar_heights, kwargs,
             )
         else:
             ax = plotting.set_bar_labels(
-                f,
-                ax,
-                top_n,
-                labels,
-                bar_dims["total_heights"],
-                comp_bar_heights,
-                kwargs,
+                ax, top_n, labels, bar_dims["total_heights"], comp_bar_heights, kwargs,
             )
 
         # Add center dividing line
@@ -420,12 +412,12 @@ class Shift:
 
         # Set insets
         if cumulative_inset:
-            f = plotting.get_cumulative_inset(
-                f, self.type2shift_score, top_n, self.normalization, kwargs
+            plotting.get_cumulative_inset(
+                ax.figure, self.type2shift_score, top_n, self.normalization, kwargs
             )
         if text_size_inset:
-            f = plotting.get_text_size_inset(
-                f, self.type2freq_1, self.type2freq_2, kwargs
+            plotting.get_text_size_inset(
+                ax.figure, self.type2freq_1, self.type2freq_2, kwargs
             )
 
         # Make x-tick labels bigger, flip y-axis ticks and label every 5th one

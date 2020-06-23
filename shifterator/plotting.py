@@ -465,7 +465,7 @@ def get_bar_type_space(ax, plot_params):
 
 
 def set_bar_labels(
-    f, ax, top_n, type_labels, full_bar_heights, comp_bar_heights, plot_params
+    ax, top_n, type_labels, full_bar_heights, comp_bar_heights, plot_params
 ):
     """
     Sets the labels on the end of each type's contribution bar
@@ -525,27 +525,19 @@ def set_bar_labels(
         text_objs.append(t)
     # Adjust axes for labels
     ax = adjust_axes_for_labels(
-        f,
-        ax,
-        full_bar_heights,
-        comp_bar_heights,
-        text_objs,
-        bar_type_space,
-        plot_params,
+        ax, full_bar_heights, comp_bar_heights, text_objs, bar_type_space, plot_params
     )
     return ax
 
 
 def adjust_axes_for_labels(
-    f, ax, bar_ends, comp_bars, text_objs, bar_type_space, plot_params
+    ax, bar_ends, comp_bars, text_objs, bar_type_space, plot_params
 ):
     """
     Attempts to readjusts the axes to account for newly plotted labels
 
     Parameters
     ----------
-    f: Matplotlib figure
-        Current figure of the shift graph
     ax: Matplotlib ax
         Current ax of the shift graph
     bar_ends: list of floats
@@ -563,7 +555,9 @@ def adjust_axes_for_labels(
     lengths = []
     for bar_n, bar_end in enumerate(bar_ends):
         bar_length = bar_end
-        bbox = text_objs[bar_n].get_window_extent(renderer=f.canvas.get_renderer())
+        bbox = text_objs[bar_n].get_window_extent(
+            renderer=ax.figure.canvas.get_renderer()
+        )
         bbox = ax.transData.inverted().transform(bbox)
         text_length = abs(bbox[0][0] - bbox[1][0])
         if bar_length > 0:
