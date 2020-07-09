@@ -160,8 +160,12 @@ def get_jsd_type_scores(p_1, p_2, m, weight_1, weight_2, base, alpha):
     if alpha == 1:
         if p_1 > 0:
             score_1 = weight_1 * (log(m, base) - log(p_1, base))
+        else:
+            score_1 = weight_1 * log(m, base)
         if p_2 > 0:
             score_2 = weight_2 * (log(p_2, base) - log(m, base))
+        else:
+            score_2 = weight_2 * -log(m, base)
     elif alpha > 0:
         if p_1 > 0:
             score_1 = weight_1 * (m ** (alpha - 1) - p_1 ** (alpha - 1)) / (alpha - 1)
