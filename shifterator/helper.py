@@ -90,7 +90,7 @@ def get_score_dictionary(scores):
             lexicon_ref = 0.5
     except FileNotFoundError:
         raise FileNotFoundError(
-            "Lexicon does not exit in Shifterator: {}".format(scores)
+            "Lexicon does not exist in Shifterator: {}".format(scores)
         )
     # Parse scores from all_scores, which is just a long str
     # Score files are line delimited with two tab-spaced columns: type and score
@@ -116,7 +116,7 @@ def get_missing_scores(type2score_1, type2score_2):
         Keys are types and values are scores
 
     Returns
-    ------
+    -------
     type2score_1, type2score_2: dict
         Keys are types and values are scores, updated to have scores across all
         types between the two score dictionaries
