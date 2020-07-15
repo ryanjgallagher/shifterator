@@ -343,7 +343,7 @@ class Shift:
             Matplotlib ax of shift graph. Displays shift graph if show_plot=True
         """
         # Set plotting parameters
-        kwargs = plotting.get_plot_params(kwargs, self.show_score_diffs)
+        kwargs = plotting.get_plot_params(kwargs, self.show_score_diffs, self.diff)
 
         # Get type score components
         type_scores = [
