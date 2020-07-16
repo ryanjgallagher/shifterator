@@ -8,7 +8,7 @@ with open("requirements.txt") as f:
 
 setuptools.setup(
     name="shifterator",
-    version="0.1.3",
+    version="0.2.0",
     author="Ryan J. Gallagher",
     author_email="gallagher.r@northeastern.edu",
     description="Interpretable data visualizations for understanding how texts differ at the word level",
