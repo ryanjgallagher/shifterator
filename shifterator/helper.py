@@ -1,9 +1,6 @@
-"""
-helper.py
-"""
-import os
-import pkgutil
 import collections
+import pkgutil
+
 
 def get_types(type2freq_1, type2score_1, type2freq_2, type2score_2):
     """
@@ -22,6 +19,7 @@ def get_types(type2freq_1, type2score_1, type2freq_2, type2score_2):
     types_2 = set(type2freq_2.keys()).intersection(set(type2score_2.keys()))
     types = types_1.union(types_2)
     return types
+
 
 def filter_by_scores(type2freq, type2score, stop_lens):
     """
@@ -45,10 +43,11 @@ def filter_by_scores(type2freq, type2score, stop_lens):
     type2freq_new = dict()
     type2score_new = dict()
     stop_words = set()
-    for lower_stop,upper_stop in stop_lens:
+    for lower_stop, upper_stop in stop_lens:
         for t in type2score:
-            if ((type2score[t] < lower_stop) or (type2score[t] > upper_stop))\
-            and t not in stop_words:
+            if (
+                (type2score[t] < lower_stop) or (type2score[t] > upper_stop)
+            ) and t not in stop_words:
                 try:
                     type2freq_new[t] = type2freq[t]
                 except KeyError:
@@ -57,7 +56,8 @@ def filter_by_scores(type2freq, type2score, stop_lens):
             else:
                 stop_words.add(t)
 
-    return (type2freq_new, type2score_new, stop_words)
+    return type2freq_new, type2score_new, stop_words
+
 
 def get_score_dictionary(scores):
     """
@@ -72,38 +72,38 @@ def get_score_dictionary(scores):
     Returns
     -------
     type2score: dict
-        Dictionary where keys are types and values are scores of those types
-    lexicon_ref: float
-        If a lexicon was loaded, the middle point of the lexicon's scale.
-        Otherwise, None is returned
+        Keys are types and values are scores of those types
     """
     if isinstance(scores, collections.Mapping):
-        return scores.copy(),None
+        return scores.copy(), None
 
     # Else, load scores from predefined score file in shifterator
     try:
-        lexicon = scores.split('_')[0]
-        score_f = 'lexicons/{}/{}.tsv'.format(lexicon, scores)
-        all_scores = pkgutil.get_data(__name__, score_f).decode('utf-8')
-        if 'labMT' in lexicon:
+        lexicon = scores.split("_")[0]
+        score_f = "lexicons/{}/{}.tsv".format(lexicon, scores)
+        all_scores = pkgutil.get_data(__name__, score_f).decode("utf-8")
+        if "labMT" in lexicon:
             lexicon_ref = 5
-        elif 'SocialSent' in lexicon:
+        elif "SocialSent" in lexicon:
             lexicon_ref = 0
-        elif 'NRC' in lexicon:
+        elif "NRC" in lexicon:
             lexicon_ref = 0.5
     except FileNotFoundError:
-        raise FileNotFoundError('Lexicon does not exit in Shifterator: {}'.format(scores))
+        raise FileNotFoundError(
+            "Lexicon does not exist in Shifterator: {}".format(scores)
+        )
     # Parse scores from all_scores, which is just a long str
     # Score files are line delimited with two tab-spaced columns: type and score
-    type_scores = all_scores.split('\n')
+    type_scores = all_scores.split("\n")
     type2score = dict()
     for t_s in type_scores:
         if len(t_s) == 0:
             continue
-        t,s = t_s.split('\t')
+        t, s = t_s.split("\t")
         type2score[t] = float(s)
 
-    return type2score,lexicon_ref
+    return type2score, lexicon_ref
+
 
 def get_missing_scores(type2score_1, type2score_2):
     """
@@ -115,11 +115,14 @@ def get_missing_scores(type2score_1, type2score_2):
     type2score_1, type2score_2: dict
         Keys are types and values are scores
 
-    Output
-    ------
+    Returns
+    -------
     type2score_1, type2score_2: dict
         Keys are types and values are scores, updated to have scores across all
         types between the two score dictionaries
+
+    missing_types: set
+        Keys that were present in only one of the provided dicts.
     """
     missing_types = set()
     types = set(type2score_1.keys()).union(set(type2score_2.keys()))
@@ -130,4 +133,4 @@ def get_missing_scores(type2score_1, type2score_2):
         elif t not in type2score_2:
             type2score_2[t] = type2score_1[t]
             missing_types.add(t)
-    return (type2score_1, type2score_2, missing_types)
+    return type2score_1, type2score_2, missing_types

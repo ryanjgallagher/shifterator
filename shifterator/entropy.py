@@ -1,8 +1,5 @@
-"""
-entropy.py
-"""
-import numpy as np
 from math import log
+
 
 def get_relative_freqs(type2freq):
     """
@@ -19,8 +16,9 @@ def get_relative_freqs(type2freq):
         Keys are types and values are relative (normalized) frequencies
     """
     n = sum(type2freq.values())
-    type2p = {t:s/n for t,s in type2freq.items()}
+    type2p = {t: s / n for t, s in type2freq.items()}
     return type2p
+
 
 def get_entropy_scores(type2p_1, type2p_2, base=2, alpha=1):
     """
@@ -31,7 +29,7 @@ def get_entropy_scores(type2p_1, type2p_2, base=2, alpha=1):
     ----------
     type2p_1, type2p_2: dict
         Keys are types of a system and values are relative frequencies of those types
-    base: float, optional
+    base: int, optional
         Base of the logarithm for calculating entropy
     alpha: float, optional
         The parameter for the generalized Tsallis entropy. Setting `alpha=1`
@@ -48,16 +46,16 @@ def get_entropy_scores(type2p_1, type2p_2, base=2, alpha=1):
     types = set(type2p_1.keys()).union(set(type2p_2.keys()))
     for t in types:
         if t in type2p_1 and t in type2p_2:
-            s1,s2 = get_entropy_type_scores(type2p_1[t], type2p_2[t], base, alpha)
+            s1, s2 = get_entropy_type_scores(type2p_1[t], type2p_2[t], base, alpha)
         elif t in type2p_1:
-            s1,s2 = get_entropy_type_scores(type2p_1[t], 0, base, alpha)
+            s1, s2 = get_entropy_type_scores(type2p_1[t], 0, base, alpha)
         else:
-            s1,s2 = get_entropy_type_scores(0, type2p_2[t], base, alpha)
+            s1, s2 = get_entropy_type_scores(0, type2p_2[t], base, alpha)
 
         type2score_1[t] = s1
         type2score_2[t] = s2
+    return type2score_1, type2score_2
 
-    return type2score_1,type2score_2
 
 def get_entropy_type_scores(p_1, p_2, base, alpha):
     """
@@ -66,7 +64,7 @@ def get_entropy_type_scores(p_1, p_2, base, alpha):
 
     Parameters
     ----------
-    p_1, p_2, float
+    p_1, p_2: float
         The probability of the type appearing in system 1 or system 2
     base: int
         The base for the logarithm when computing entropy
@@ -79,37 +77,19 @@ def get_entropy_type_scores(p_1, p_2, base, alpha):
     score_1, score_2: float
         The weights of the type's contribution
     """
+    score_1 = 0
+    score_2 = 0
     if alpha == 1:
-        if p_1 > 0 and p_2 > 0:
-            score_1 = -1 * log(p_1, base)
-            score_2 = -1 * log(p_2, base)
-        elif p_1 > 0:
-            score_1 = -1 * log(p_1, base)
-            score_2 = 0
-        elif p_2 > 0:
-            score_1 = 0
-            score_2 = -1 *log(p_2, base)
-        else:
-            score_1 = 0
-            score_2 = 0
-    elif alpha > 1:
-        score_1 = p_1**(alpha - 1) / (alpha - 1)
-        score_2 = p_2**(alpha - 1) / (alpha - 1)
-    else:
-        if p_1 > 0 and p_2 > 0:
-            score_1 = p_1**(alpha - 1) / (alpha - 1)
-            score_2 = p_2**(alpha - 1) / (alpha - 1)
-        elif p_1 > 0:
-            score_1 = p_1**(alpha - 1) / (alpha - 1)
-            score_2 = 0
-        elif p_2 > 0:
-            score_1 = 0
-            score_2 = p_2**(alpha - 1) / (alpha - 1)
-        else:
-            score_1 = 0
-            score_2 = 0
-
-    return score_1,score_2
+        if p_1 > 0:
+            score_1 = -log(p_1, base)
+        if p_2 > 0:
+            score_2 = -log(p_2, base)
+    elif alpha > 0:
+        if p_1 > 0:
+            score_1 = p_1 ** (alpha - 1) / (alpha - 1)
+        if p_2 > 0:
+            score_2 = p_2 ** (alpha - 1) / (alpha - 1)
+    return score_1, score_2
 
 
 def get_jsd_scores(type2p_1, type2p_2, weight_1=0.5, weight_2=0.5, base=2, alpha=1):
@@ -140,25 +120,17 @@ def get_jsd_scores(type2p_1, type2p_2, weight_1=0.5, weight_2=0.5, base=2, alpha
     type2score_2 = dict()
     types = set(type2p_1.keys()).union(set(type2p_2.keys()))
     for t in types:
-        if t in type2p_1 and t in type2p_2:
-            p_1 = type2p_1[t]
-            p_2 = type2p_2[t]
-            m = weight_1 * p_1 + weight_2 * p_2
-            s1,s2 = get_jsd_type_scores(p_1, p_2, m, weight_1, weight_2, base, alpha)
-        elif t in type2p_1:
-            p_1 = type2p_1[t]
-            m = weight_1 * p_1
-            s1,s2 = get_jsd_type_scores(p_1, 0, m, weight_1, weight_2, base, alpha)
-        else:
-            p_2 = type2p_2[t]
-            m = weight_2 * p_2
-            s1,s2 = get_jsd_type_scores(0, p_2, m, weight_1, weight_2, base, alpha)
+        p_1 = type2p_1[t] if t in type2p_1 else 0
+        p_2 = type2p_2[t] if t in type2p_2 else 0
+        m = weight_1 * p_1 + weight_2 * p_2
+        s1, s2 = get_jsd_type_scores(p_1, p_2, m, weight_1, weight_2, base, alpha)
 
         type2m[t] = m
         type2score_1[t] = s1
         type2score_2[t] = s2
 
-    return type2m,type2score_1,type2score_2
+    return type2m, type2score_1, type2score_2
+
 
 def get_jsd_type_scores(p_1, p_2, m, weight_1, weight_2, base, alpha):
     """
@@ -183,34 +155,20 @@ def get_jsd_type_scores(p_1, p_2, m, weight_1, weight_2, base, alpha):
     score_1, score_2: float
         The weights of the type's contribution
     """
+    score_1 = 0
+    score_2 = 0
     if alpha == 1:
-        if p_1 > 0 and p_2 > 0:
+        if p_1 > 0:
             score_1 = weight_1 * (log(m, base) - log(p_1, base))
-            score_2 = weight_2 * (log(p_2, base) - log(m, base))
-        elif p_1 > 0:
-            score_1 = weight_1 * (log(m, base) - log(p_1, base))
-            score_2 = weight_2 * (-log(m, base))
-        elif p_2 > 0:
+        else:
             score_1 = weight_1 * log(m, base)
+        if p_2 > 0:
             score_2 = weight_2 * (log(p_2, base) - log(m, base))
         else:
-            score_1 = 0
-            score_2 = 0
-    elif alpha > 1:
-        score_1 = weight_1 * (m**(alpha - 1) - p_1**(alpha - 1)) / (alpha - 1)
-        score_2 = weight_2 * (m**(alpha - 1) - p_2**(alpha - 1)) / (alpha - 1)
-    else:
-        if p_1 > 0 and p_2 > 0:
-            score_1 = weight_1 * (m**(alpha - 1) - p_1**(alpha - 1)) / (alpha - 1)
-            score_2 = weight_2 * (m**(alpha - 1) - p_2**(alpha - 1)) / (alpha - 1)
-        elif p_1 > 0:
-            score_1 = weight_1 * (m**(alpha - 1) - p_1**(alpha - 1)) / (alpha - 1)
-            score_2 = 0
-        elif p_2 > 0:
-            score_1 = 0
-            score_2 = weight_2 * (m**(alpha - 1) - p_2**(alpha - 1)) / (alpha - 1)
-        else:
-            score_1 = 0
-            score_2 = 0
-
-    return score_1,score_2
+            score_2 = weight_2 * -log(m, base)
+    elif alpha > 0:
+        if p_1 > 0:
+            score_1 = weight_1 * (m ** (alpha - 1) - p_1 ** (alpha - 1)) / (alpha - 1)
+        if p_2 > 0:
+            score_2 = weight_2 * (m ** (alpha - 1) - p_2 ** (alpha - 1)) / (alpha - 1)
+    return score_1, score_2
