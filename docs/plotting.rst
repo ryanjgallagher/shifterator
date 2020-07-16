@@ -1,4 +1,4 @@
-Ploting Options
+Plotting Options
 ===============
 
 Work in progress.
