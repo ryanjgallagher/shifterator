@@ -19,6 +19,7 @@ def get_plot_params(plot_params, show_score_diffs, diff):
         "cumulative_ylabel": None,
         "detailed": True,
         "dpi": 200,
+        "every_nth_ytick": 5,
         "height": 15,
         "invisible_spines": [],
         "label_fontsize": 13,
@@ -602,8 +603,9 @@ def set_ticks(ax, top_n, plot_params):
         x_ticks = [tick_format.format(abs(t)) for t in ax.get_xticks()]
     ax.set_xticklabels(x_ticks, fontsize=plot_params["xtick_fontsize"])
     # Flip y-axis tick labels and make sure every 5th tick is labeled
-    y_ticks = list(range(1, top_n, 5)) + [top_n]
-    y_tick_labels = [str(n) for n in (list(range(top_n, 1, -5)) + ["1"])]
+    y_ticks = list(range(1, top_n, plot_params["every_nth_ytick"])) + [top_n]
+    y_tick_label_pos = (list(range(top_n, 1, -plot_params["every_nth_ytick"])) + ["1"])
+    y_tick_labels = [str(n) for n in y_tick_label_pos]
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_tick_labels, fontsize=plot_params["ytick_fontsize"])
 
@@ -712,7 +714,7 @@ def get_cumulative_inset(f, type2shift_score, top_n, normalization, plot_params)
     in_ax.semilogy(
         cum_scores,
         range(1, len(cum_scores) + 1),
-        "-o",
+        "-",
         color="black",
         linewidth=0.5,
         markersize=1.2,

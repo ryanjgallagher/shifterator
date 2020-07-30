@@ -387,7 +387,7 @@ class Shift:
         )
         # Get labels for bars
         type_labels = [t for (t, _, _, _, _, _) in type_scores]
-        # Add indicator if type borrwed a score
+        # Add indicator if type borrowed a score
         m_sym = kwargs["missing_symbol"]
         type_labels = [
             t + m_sym if t in self.adopted_score_types else t for t in type_labels
