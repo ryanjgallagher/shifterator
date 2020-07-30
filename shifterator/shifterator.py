@@ -1,11 +1,4 @@
-"""
-TODO:
- - Add funcs to shift class that allow for easy updating of type2freq dicts
- - Make it easy to remove / reset the filter. This will involve having to hold
-   onto stop words, their freqs, and their values (discarded as of now)
- - Make it so you can specify words as stop words instead of just a filter window
-"""
-
+import sys
 import warnings
 
 import matplotlib.pyplot as plt
@@ -33,10 +26,19 @@ class Shift:
         and type2score_1. If None and a lexicon is selected for type2score,
         uses the respective middle point in that lexicon's scale. Otherwise
         if None, uses zero as the reference point
+    handle_missing_scores: str, optional
+        If 'error', throws an error whenever a word has a score in one score
+        dictionary but not the other. If 'exclude', excludes any word that is
+        missing a score in one score dictionary from all word shift
+        calculations, regardless if it may have a score in the other dictionary.
+        If 'adopt' and the score is missing in one dictionary, then uses the
+        score from the other dictionary if it is available
     stop_lens: iterable of 2-tuples, optional
-        Denotes intervals of scores that should be excluded when calculating
-        shift scores, and types with scores in this range will be excluded
-        from shift calculations
+        Denotes intervals of scores that should be excluded from word shifts
+        calculations. Types with scores in this range will be excluded from word
+        shift calculations
+    stop_words: set, optional
+        Denotes words that should be excluded from calculation of word shifts
     normalization: str, optional
         If 'variation', normalizes shift scores so that the sum of
         their absolute values sums to 1. If 'trajectory', normalizes
@@ -53,12 +55,11 @@ class Shift:
         type2score_1=None,
         type2score_2=None,
         reference_value=None,
+        handle_missing_scores="error",
         stop_lens=None,
+        stop_words=None,
         normalization="variation",
     ):
-        # Set type2freq dictionaries
-        self.type2freq_1 = type2freq_1.copy()
-        self.type2freq_2 = type2freq_2.copy()
         # Set type2score dictionaries
         if type2score_1 is not None and type2score_2 is not None:
             self.type2score_1, lex_ref = helper.get_score_dictionary(type2score_1)
@@ -76,30 +77,35 @@ class Shift:
             self.type2score_1 = self.type2score_2
             self.show_score_diffs = False
         else:
-            self.type2score_1 = {t: 1 for t in self.type2freq_1}
-            self.type2score_2 = {t: 1 for t in self.type2freq_2}
+            self.type2score_1 = {t: 1 for t in type2freq_1}
+            self.type2score_2 = {t: 1 for t in type2freq_2}
             self.show_score_diffs = False
-        # Filter type dictionaries by stop_lens
-        self.stop_lens = stop_lens
-        if stop_lens is not None:
-            self.type2freq_1, self.type2score_1, sw_1 = helper.filter_by_scores(
-                self.type2freq_1, self.type2score_1, stop_lens
-            )
-            self.type2freq_2, self.type2score_2, sw_2 = helper.filter_by_scores(
-                self.type2freq_2, self.type2score_2, stop_lens
-            )
-            self.stop_words = sw_1.union(sw_2)
-        # Get common vocabulary
-        self.types = helper.get_types(
-            self.type2freq_1, self.type2score_1, self.type2freq_2, self.type2score_2
-        )
-        # Assume missing scores in each vocabulary (TODO: add options)
-        missing_scores_info = helper.get_missing_scores(
-            self.type2score_1, self.type2score_2
-        )
-        self.type2score_1 = missing_scores_info[0]
-        self.type2score_2 = missing_scores_info[1]
-        self.missing_score_types = missing_scores_info[2]
+
+        # Preprocess words according to score rules, stop words, and stop lens
+        self.handle_missing_scores = handle_missing_scores
+        if stop_lens is None:
+            self.stop_lens = []
+        else:
+            self.stop_lens = stop_lens
+        if stop_words is None:
+            self.stop_words = set()
+        else:
+            self.stop_words = stop_words
+        preprocessed = helper.preprocess_words_scores(type2freq_1,
+                                                      self.type2score_1,
+                                                      type2freq_2,
+                                                      self.type2score_2,
+                                                      self.stop_lens,
+                                                      self.stop_words,
+                                                      self.handle_missing_scores)
+        self.type2freq_1 = preprocessed[0]
+        self.type2freq_2 = preprocessed[1]
+        self.type2score_1 = preprocessed[2]
+        self.type2score_2 = preprocessed[3]
+        self.types = preprocessed[4]
+        self.filtered_types = preprocessed[5]
+        self.no_score_types = preprocessed[6]
+        self.adopted_score_types = preprocessed[7]
 
         # Set reference value
         if reference_value is not None:
@@ -384,7 +390,7 @@ class Shift:
         # Add indicator if type borrwed a score
         m_sym = kwargs["missing_symbol"]
         type_labels = [
-            t + m_sym if t in self.missing_score_types else t for t in type_labels
+            t + m_sym if t in self.adopted_score_types else t for t in type_labels
         ]
         # Get labels for total contribution bars
         bar_labels = [kwargs["symbols"][b] for b in bar_order]

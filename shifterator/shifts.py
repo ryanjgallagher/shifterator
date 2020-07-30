@@ -22,10 +22,19 @@ class WeightedAvgShift(Shift):
         and type2score_1. If None and a lexicon is selected for type2score,
         uses the respective middle point in that lexicon's scale. Otherwise
         if None, uses zero as the reference point
+    handle_missing_scores: str, optional
+        If 'error', throws an error whenever a word has a score in one score
+        dictionary but not the other. If 'exclude', excludes any word that is
+        missing a score in one score dictionary from all word shift
+        calculations, regardless if it may have a score in the other dictionary.
+        If 'adopt' and the score is missing in one dictionary, then uses the
+        score from the other dictionary if it is available
     stop_lens: iterable of 2-tuples, optional
-        Denotes intervals of scores that should be excluded when calculating
-        shift scores, and types with scores in this range will be excluded
-        from shift calculations
+        Denotes intervals of scores that should be excluded from word shifts
+        calculations. Types with scores in this range will be excluded from word
+        shift calculations
+    stop_words: set, optional
+        Denotes words that should be excluded from word shifts calculations
     normalization: str, optional
         If 'variation', normalizes shift scores so that the sum of
         their absolute values sums to 1. If 'trajectory', normalizes
@@ -42,7 +51,9 @@ class WeightedAvgShift(Shift):
         type2score_1=None,
         type2score_2=None,
         reference_value=None,
+        handle_missing_scores="error",
         stop_lens=None,
+        stop_words=set(),
         normalization="variation",
     ):
         super().__init__(
@@ -51,7 +62,9 @@ class WeightedAvgShift(Shift):
             type2score_1=type2score_1,
             type2score_2=type2score_2,
             reference_value=reference_value,
-            stop_lens=None,
+            handle_missing_scores=handle_missing_scores,
+            stop_lens=stop_lens,
+            stop_words=stop_words,
             normalization=normalization,
         )
 
@@ -84,7 +97,9 @@ class ProportionShift(Shift):
             type2score_1=None,
             type2score_2=None,
             reference_value=0,
+            handle_missing_scores="error",
             stop_lens=None,
+            stop_words=None,
             normalization="variation",
         )
 
@@ -129,9 +144,6 @@ class EntropyShift(Shift):
         recovers the Shannon entropy. Higher `alpha` emphasizes more common
         types, lower `alpha` emphasizes less common types
         For details: https://en.wikipedia.org/wiki/Tsallis_entropy
-    stop_lens: iterable of 2-tuples, optional
-        denotes intervals that should be excluded when calculating shift
-        scores
     reference_value: str or float, optional
         The reference score to use to partition scores into two different
         regimes. If 'average', uses the average score according to type2freq_1
@@ -151,7 +163,6 @@ class EntropyShift(Shift):
         type2freq_2,
         base=2,
         alpha=1,
-        stop_lens=None,
         reference_value=0,
         normalization="variation",
     ):
@@ -169,7 +180,9 @@ class EntropyShift(Shift):
             type2freq_2=type2freq_2,
             type2score_1=type2s_1,
             type2score_2=type2s_2,
-            stop_lens=stop_lens,
+            handle_missing_scores="error",
+            stop_lens=None,
+            stop_words=None,
             reference_value=reference_value,
             normalization=normalization,
         )
@@ -229,7 +242,6 @@ class KLDivergenceShift(Shift):
         type2freq_1,
         type2freq_2,
         base=2,
-        stop_lens=None,
         reference_value=0,
         normalization="variation",
     ):
@@ -259,7 +271,9 @@ class KLDivergenceShift(Shift):
             type2freq_2=type2p_2,
             type2score_1=type2s_1,
             type2score_2=type2s_2,
-            stop_lens=stop_lens,
+            handle_missing_scores="error",
+            stop_lens=None,
+            stop_words=None,
             reference_value=reference_value,
             normalization=normalization,
         )
@@ -330,7 +344,6 @@ class JSDivergenceShift(Shift):
         weight_1=0.5,
         weight_2=0.5,
         alpha=1,
-        stop_lens=None,
         reference_value=0,
         normalization="variation",
     ):
@@ -360,8 +373,10 @@ class JSDivergenceShift(Shift):
             type2score_1=type2s_1,
             type2score_2=type2s_2,
             reference_value=reference_value,
+            handle_missing_scores="error",
             normalization=normalization,
-            stop_lens=stop_lens,
+            stop_lens=None,
+            stop_words=None,
         )
         self.type2p_1 = type2p_1
         self.type2p_2 = type2p_2
