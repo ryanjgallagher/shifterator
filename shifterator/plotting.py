@@ -7,8 +7,6 @@ from matplotlib import rcParams
 
 
 def get_plot_params(plot_params, show_score_diffs, diff):
-    pos_index = 1 if diff >= 0 else 0
-    neg_index = 0 if diff >= 0 else 1
     defaults = {
         "all_pos_contributions": False,
         "alpha_fade": 0.35,
@@ -45,19 +43,6 @@ def get_plot_params(plot_params, show_score_diffs, diff):
         "serif": False,
         "show_score_diffs": show_score_diffs,
         "show_total": True,
-        "symbols": {
-            "all_pos_neg": plot_params["system_names"][0],
-            "all_pos_pos": plot_params["system_names"][1],
-            "neg_s": u"\u25BD",
-            "neg_s_neg_p": u"-\u2193",
-            "neg_s_pos_p": u"-\u2191",
-            "neg_total": plot_params["system_names"][neg_index],
-            "pos_s": u"\u25B3",
-            "pos_s_neg_p": u"+\u2193",
-            "pos_s_pos_p": u"+\u2191",
-            "pos_total": plot_params["system_names"][pos_index],
-            "total": r"$\Sigma$",
-        },
         "system_names": ["Sys. 1", "Sys. 2"],
         "tick_format": "{:.1f}",
         "tight": True,
@@ -71,6 +56,19 @@ def get_plot_params(plot_params, show_score_diffs, diff):
         "ylabel": r"Type rank $r$",
         "ylabel_fontsize": 20,
         "ytick_fontsize": 14,
+    }
+    defaults["symbols"] = {
+        "all_pos_neg": defaults["system_names"][0],
+        "all_pos_pos": defaults["system_names"][1],
+        "neg_s": u"\u25BD",
+        "neg_s_neg_p": u"-\u2193",
+        "neg_s_pos_p": u"-\u2191",
+        "neg_total": "",
+        "pos_s": u"\u25B3",
+        "pos_s_neg_p": u"+\u2193",
+        "pos_s_pos_p": u"+\u2191",
+        "pos_total": "",
+        "total": r"$\Sigma$",
     }
     defaults.update(plot_params)
     return defaults
