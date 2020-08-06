@@ -15,4 +15,8 @@ Python code to produce shift graphs can be downloaded via pip.
 
 ## Documentation
 
-Please see [the documentation](https://shifterator.readthedocs.io/en/latest/) to learn how to create word shift graphs for your own work.
+[The documentation](https://shifterator.readthedocs.io/en/latest/) details how to create various kinds of word shift graphs with Shifterator, and includes a detailed cookbook for how to interpret, visualize, and work with word shifts.
+
+See the following paper for more details on word shifts, and please cite it if you use them in your work:
+
+> Gallagher, R. J., Frank, M. R., Mitchell, Lewis, Schwartz, A. J., Reagan, A. J., Danforth, C. M., Dodds, P. S.. (2020). [Generalized Word Shift Graphs: A Method for Visualizing and Explaining Pairwise Comparisons Between Texts](https://arxiv.org/abs/2008.02250). *arXiv preprint 2008.02250*.
