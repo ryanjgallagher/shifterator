@@ -4,9 +4,9 @@ Citing
 Shifterator
 -----------
 
-If you use :code:`shifterator`, please cite the following papers:
+If you use :code:`shifterator`, please cite the following paper:
 
-    Gallagher, Ryan J., Morgan R. Frank, Lewis Mitchell, Aaron J. Schwartz, Colin Van Oort, Andrew J. Reagan, Christopher M. Danforth, and Peter Sheridan Dodds. "Word shift: A general method for visualizing and explaining pairwise comparisons between texts." *Working paper*, 2020.
+    Gallagher, Ryan J., Morgan R. Frank, Lewis Mitchell, Aaron J. Schwartz, Andrew J. Reagan, Christopher M. Danforth, and Peter Sheridan Dodds. "Generalized Word Shift Graphs: A Method for Visualizing and Explaining Pairwise Comparisons Betwen Texts." *arXiv preprint 2008.02250*, 2020.
 
 
 Sentiment Lexicons
