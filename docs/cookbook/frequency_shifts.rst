@@ -151,7 +151,7 @@ If the probability of a word in the mixture text is :math:`m_i = \pi_1 p_i^{(1)}
 
 .. math::
 
-    \delta JSD_i = m_i \log \frac{1}{m_i} - \biggl( \pi_i^{(1)} \log \frac{1}{p_i^{(1)}} + \pi_2 p_i^{(2)} \log \frac{1}{p_i^{(2)}} \bigg)
+    \delta JSD_i = m_i \log \frac{1}{m_i} - \biggl( \pi_i p_i^{(1)} \log \frac{1}{p_i^{(1)}} + \pi_2 p_i^{(2)} \log \frac{1}{p_i^{(2)}} \bigg)
 
 .. note::
 
