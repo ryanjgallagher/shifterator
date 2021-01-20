@@ -6,7 +6,7 @@ Shifterator
 
 If you use :code:`shifterator`, please cite the following paper:
 
-    Gallagher, Ryan J., Morgan R. Frank, Lewis Mitchell, Aaron J. Schwartz, Andrew J. Reagan, Christopher M. Danforth, and Peter Sheridan Dodds. "Generalized Word Shift Graphs: A Method for Visualizing and Explaining Pairwise Comparisons Betwen Texts." *arXiv preprint 2008.02250*, 2020.
+    Gallagher, Ryan. J., Morgan R. Frank, Lewis Mitchell, Aaron J. Schwartz, Andrew J. Reagan, Christopher M. Danforth, and Peter Sheridan Dodds. "Generalized Word Shift Graphs: A Method for Visualizing and Explaining Pairwise Comparisons Between Texts."" *EPJ Data Science* 10, no. 4 (2021).
 
 
 Sentiment Lexicons
