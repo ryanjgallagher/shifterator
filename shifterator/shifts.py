@@ -116,7 +116,7 @@ class ProportionShift(Shift):
     ):
         if title is None:
             title = ""
-        super().get_shift_graph(
+        ax = super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
             cumulative_inset=cumulative_inset,
@@ -127,6 +127,7 @@ class ProportionShift(Shift):
             title=title,
             **kwargs
         )
+        return ax
 
 
 class EntropyShift(Shift):
@@ -200,7 +201,7 @@ class EntropyShift(Shift):
         filename=None,
         **kwargs
     ):
-        super().get_shift_graph(
+        ax = super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
             cumulative_inset=cumulative_inset,
@@ -209,6 +210,7 @@ class EntropyShift(Shift):
             filename=filename,
             **kwargs
         )
+        return ax
 
 
 class KLDivergenceShift(Shift):
@@ -293,7 +295,7 @@ class KLDivergenceShift(Shift):
     ):
         if title is None:
             title = ""
-        super().get_shift_graph(
+        ax = super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
             cumulative_inset=cumulative_inset,
@@ -303,6 +305,7 @@ class KLDivergenceShift(Shift):
             filename=filename,
             **kwargs
         )
+        return ax
 
 
 class JSDivergenceShift(Shift):
@@ -400,7 +403,7 @@ class JSDivergenceShift(Shift):
             all_pos_contributions = False
         if title is None:
             title = ""
-        super().get_shift_graph(
+        ax = super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
             cumulative_inset=cumulative_inset,
@@ -411,3 +414,4 @@ class JSDivergenceShift(Shift):
             all_pos_contributions=all_pos_contributions,
             **kwargs
         )
+        return ax
