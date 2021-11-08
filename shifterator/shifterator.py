@@ -77,6 +77,7 @@ class Shift:
             self.type2score_1 = self.type2score_2
             self.show_score_diffs = False
         else:
+            lex_ref = None
             self.type2score_1 = {t: 1 for t in type2freq_1}
             self.type2score_2 = {t: 1 for t in type2freq_2}
             self.show_score_diffs = False
