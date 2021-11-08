@@ -224,7 +224,10 @@ class Shift:
         # Normalize the total shift scores
         total_diff = sum(type2shift_score.values())
         self.diff = total_diff
-        if self.normalization == "variation":
+        if total_diff == 0:
+            warnings.warn("Score normalization is not well-defined because the total score diff is 0. Setting norm to 1")
+            self.norm = 1
+        elif self.normalization == "variation":
             abs_sum = sum(abs(s) for s in type2shift_score.values())
             self.norm = abs_sum
         elif self.normalization == "trajectory" and total_diff != 0:
