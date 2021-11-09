@@ -83,7 +83,7 @@ def preprocess_words_scores(type2freq_1, type2score_1, type2freq_2, type2score_2
                     "Word has freq but no score in type2score_2: {}".format(t)
                 )
             elif handle_missing_scores == "exclude":
-                filtered_types.add(t)
+                no_score_types.add(t)
                 continue
             else:
                 raise ValueError(
