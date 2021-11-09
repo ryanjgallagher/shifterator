@@ -250,11 +250,10 @@ class KLDivergenceShift(Shift):
         # Check that KLD is well defined
         types_1 = set(type2freq_1.keys())
         types_2 = set(type2freq_2.keys())
-        if len(types_1.symmetric_difference(types_2)) > 0:
+        if len(types_2.difference(types_1)) > 0:
             err = (
-                "There are types that appear in either type2freq_1 or "
-                + "type2freq_2 but not the other: the KL divergence is not "
-                + "well defined"
+                "There are types that appear in type2freq_2 but not type2freq_1:"
+                + "the KL divergence is not well-defined"
             )
             raise ValueError(err)
 
@@ -263,16 +262,16 @@ class KLDivergenceShift(Shift):
         type2freq_2 = type2freq_2.copy()
         type2p_1 = entropy.get_relative_freqs(type2freq_1)
         type2p_2 = entropy.get_relative_freqs(type2freq_2)
+
         # Get surprisal scores
-        type2s_1 = {t: p * -1 * entropy.log(p, base) for t, p in type2p_1.items()}
-        type2s_2 = {t: p * -1 * entropy.log(p, base) for t, p in type2p_2.items()}
+        type2s_1, type2s_2 = entropy.get_entropy_scores(type2p_1, type2p_2, base, alpha=1)
 
         # Initialize shift
         super().__init__(
-            type2freq_1=type2p_2,
-            type2freq_2=type2p_2,
-            type2score_1=type2s_1,
-            type2score_2=type2s_2,
+            type2freq_1=type2freq_2,
+            type2freq_2=type2freq_2,
+            type2score_1=type2s_2,
+            type2score_2=type2s_1,
             handle_missing_scores="error",
             stop_lens=None,
             stop_words=None,
