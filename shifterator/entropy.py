@@ -86,9 +86,9 @@ def get_entropy_type_scores(p_1, p_2, base, alpha):
             score_2 = -log(p_2, base)
     elif alpha > 0:
         if p_1 > 0:
-            score_1 = p_1 ** (alpha - 1) / (alpha - 1)
+            score_1 = -1 * p_1 ** (alpha - 1) / (alpha - 1)
         if p_2 > 0:
-            score_2 = p_2 ** (alpha - 1) / (alpha - 1)
+            score_2 = -1 * p_2 ** (alpha - 1) / (alpha - 1)
     return score_1, score_2
 
 
