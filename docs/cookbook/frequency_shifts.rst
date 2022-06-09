@@ -47,7 +47,7 @@ Proportion shifts are easy to interpret, but they are simplistic and have a diff
 
     H(P) = \sum_i p_i \log \frac{1}{p_i},
 
-where the factor :math:`-\log p_i` is the *surprisal* of a word. The less often a word appears in a text, the mor surprising that it is. The Shannon entropy can be interpreted as the average surprisal of a text. We can compare two texts by taking the difference between their entropies, :math:`H(P^{(2)}) - H(P^{(1)})`. When we do this, we can get the contribution :math:`\delta H_i` of each word to that difference:
+where the factor :math:`-\log p_i` is the *surprisal* of a word. The less often a word appears in a text, the more surprising that it is. The Shannon entropy can be interpreted as the average surprisal of a text. We can compare two texts by taking the difference between their entropies, :math:`H(P^{(2)}) - H(P^{(1)})`. When we do this, we can get the contribution :math:`\delta H_i` of each word to that difference:
 
 .. math::
 
