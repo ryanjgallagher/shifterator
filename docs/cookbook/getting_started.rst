@@ -21,4 +21,4 @@ Throughout this tutorial, we compare the speeches of two U.S. presidents, Lyndon
 
 Necessary Data Structures
 -------------------------
-We load the parsed text into two dictionaries: :code:`type2freq_1` (for Lyndon B. Johnson) and :code:`type2freq_2` (for George W. Bush). These are dictionaries where keys are word types and valules are their frequencies in each text. For many word shifts, this is the only input that is required.
+We load the parsed text into two dictionaries: :code:`type2freq_1` (for Lyndon B. Johnson) and :code:`type2freq_2` (for George W. Bush). These are dictionaries where keys are word types and values are their frequencies in each text. For many word shifts, this is the only input that is required.
