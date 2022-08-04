@@ -58,6 +58,7 @@ def get_plot_params(plot_params, show_score_diffs, diff):
         "ylabel_fontsize": 20,
         "ytick_fontsize": 14,
     }
+    defaults.update(plot_params)
     defaults["symbols"] = {
         "all_pos_neg": defaults["system_names"][0],
         "all_pos_pos": defaults["system_names"][1],
