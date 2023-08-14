@@ -156,7 +156,7 @@ def get_score_dictionary(scores):
     type2score: dict
         Keys are types and values are scores of those types
     """
-    if isinstance(scores, collections.Mapping):
+    if isinstance(scores, Mapping):
         return scores.copy(), None
 
     # Else, load scores from predefined score file in shifterator
