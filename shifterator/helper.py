@@ -1,4 +1,7 @@
-import collections
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 import pkgutil
 
 
