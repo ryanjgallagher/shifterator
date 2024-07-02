@@ -1,5 +1,9 @@
-import collections
 import pkgutil
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
+
 
 
 def preprocess_words_scores(type2freq_1, type2score_1, type2freq_2, type2score_2,
@@ -153,7 +157,7 @@ def get_score_dictionary(scores):
     type2score: dict
         Keys are types and values are scores of those types
     """
-    if isinstance(scores, collections.Mapping):
+    if isinstance(scores, Mapping):
         return scores.copy(), None
 
     # Else, load scores from predefined score file in shifterator
