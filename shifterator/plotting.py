@@ -601,6 +601,7 @@ def set_ticks(ax, top_n, plot_params):
         x_ticks = [tick_format.format(t) for t in ax.get_xticks()]
     else:
         x_ticks = [tick_format.format(abs(t)) for t in ax.get_xticks()]
+    ax.set_xticks(ax.get_xticks())
     ax.set_xticklabels(x_ticks, fontsize=plot_params["xtick_fontsize"])
     # Flip y-axis tick labels and make sure every 5th tick is labeled
     y_ticks = list(range(1, top_n, plot_params["every_nth_ytick"])) + [top_n]
