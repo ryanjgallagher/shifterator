@@ -48,7 +48,7 @@ To show an example, we compare the average sentiment of Bush's and Johnsonn's sp
 .. code-block:: python
 
     sentiment_shift = sh.WeightedAvgShift(type2freq_1=type2freq_1,
-                                          type2freq_1=type2freq_2,
+                                          type2freq_2=type2freq_2,
                                           type2score_1='labMT_English',
                                           reference_value=5,
                                           stop_lens=[(4,6)])
