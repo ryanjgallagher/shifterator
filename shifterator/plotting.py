@@ -799,7 +799,7 @@ def get_text_size_inset(f, type2freq_1, type2freq_2, plot_params):
     # Set title and label properties
     in_ax.text(0.5, 0.75, "Text Size:", horizontalalignment="center", fontsize=14)
     for tick in in_ax.yaxis.get_major_ticks():
-        tick.label.set_fontsize(12)
+        tick.label1.set_fontsize(12)
     in_ax.tick_params(axis="y", length=0)
     # Turn off axes and make transparent
     for side in ["left", "right", "top", "bottom"]:
