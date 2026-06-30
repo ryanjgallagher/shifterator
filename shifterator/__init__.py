@@ -8,3 +8,4 @@ from .shifts import (
 )
 
 name = "shifterator"
+__version__ = "0.5.1"
