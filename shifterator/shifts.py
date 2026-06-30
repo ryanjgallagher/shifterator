@@ -124,6 +124,12 @@ class ProportionShift(Shift):
     ):
         if title is None:
             title = ""
+        # A type's contribution is positive or negative depending on which
+        # system it is more prevalent in, so label the total contribution bars
+        # with the system names (see issue #47). We do not set
+        # `all_pos_contributions`, which would force every bar to point the same
+        # direction since proportion shift scores already carry their sign.
+        kwargs.setdefault("label_total_with_system_names", True)
         ax = super().get_shift_graph(
             top_n=top_n,
             text_size_inset=text_size_inset,
