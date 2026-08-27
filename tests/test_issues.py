@@ -1,11 +1,11 @@
-"""Tests for fixes to GitHub issues #11, #26, #38."""
+"""Tests for fixes to GitHub issues #11, #26, #38, #47."""
 
 import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import pytest
-from shifterator import WeightedAvgShift, EntropyShift
+from shifterator import WeightedAvgShift, EntropyShift, ProportionShift
 
 
 @pytest.fixture(autouse=True)
@@ -138,3 +138,52 @@ class TestIssue38FontFamily:
         shift = WeightedAvgShift(freq1, freq2, type2score_1=scores)
         ax = shift.get_shift_graph(top_n=2, show_plot=False)
         assert ax is not None
+
+
+# ---------------------------------------------------------------------------
+# Issue #47: ProportionShift should label the top bars with the system names
+# ---------------------------------------------------------------------------
+
+class TestIssue47ProportionShiftSystemNames:
+    freq1 = {"happy": 20, "sad": 5, "the": 50, "good": 15, "bad": 10}
+    freq2 = {"happy": 10, "sad": 15, "the": 45, "good": 5, "bad": 20, "angry": 8}
+
+    def test_system_names_labeled(self):
+        """The total contribution bars should be labeled with the system names."""
+        shift = ProportionShift(self.freq1, self.freq2)
+        ax = shift.get_shift_graph(
+            top_n=6, show_plot=False, system_names=["Corpus A", "Corpus B"]
+        )
+        labels = [t.get_text() for t in ax.texts]
+        assert "Corpus A" in labels
+        assert "Corpus B" in labels
+
+    def test_default_system_names_labeled(self):
+        """Falls back to the default system names when none are given."""
+        shift = ProportionShift(self.freq1, self.freq2)
+        ax = shift.get_shift_graph(top_n=6, show_plot=False)
+        labels = [t.get_text() for t in ax.texts]
+        assert "Text 1" in labels
+        assert "Text 2" in labels
+
+    def test_bars_remain_two_sided(self):
+        """Labeling must not flip every bar to one side (the broken workaround
+        of passing all_pos_contributions=True)."""
+        shift = ProportionShift(self.freq1, self.freq2)
+        ax = shift.get_shift_graph(top_n=6, show_plot=False)
+        widths = [p.get_width() for p in ax.patches if p.get_width() != 0]
+        assert any(w < 0 for w in widths)
+        assert any(w > 0 for w in widths)
+
+    def test_other_shifts_unaffected(self):
+        """Shifts that don't opt in keep empty total-bar symbols."""
+        freq1 = {"hello": 20, "world": 10}
+        freq2 = {"hello": 15, "world": 15}
+        scores = {"hello": 7.0, "world": 5.0}
+        shift = WeightedAvgShift(freq1, freq2, type2score_1=scores)
+        ax = shift.get_shift_graph(
+            top_n=2, show_plot=False, system_names=["Corpus A", "Corpus B"]
+        )
+        labels = [t.get_text() for t in ax.texts]
+        assert "Corpus A" not in labels
+        assert "Corpus B" not in labels

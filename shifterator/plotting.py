@@ -23,6 +23,7 @@ def get_plot_params(plot_params, show_score_diffs, diff):
         "height": 15,
         "invisible_spines": [],
         "label_fontsize": 13,
+        "label_total_with_system_names": False,
         "missing_symbol": "*",
         "pos_cumulative_inset": [0.19, 0.12, 0.175, 0.175],
         "pos_text_size_inset": [0.81, 0.12, 0.08, 0.08],
@@ -74,6 +75,13 @@ def get_plot_params(plot_params, show_score_diffs, diff):
         "total": r"$\Sigma$",
     }
     defaults.update(plot_params)
+    # Label the total contribution bars with the system names. This is used by
+    # shifts whose +/- contributions correspond to the two systems (e.g.
+    # ProportionShift), so the top bars are labeled like the JSD shift graph
+    # without flipping bar directions via `all_pos_contributions`.
+    if defaults["label_total_with_system_names"]:
+        defaults["symbols"]["neg_total"] = defaults["system_names"][0]
+        defaults["symbols"]["pos_total"] = defaults["system_names"][1]
     return defaults
 
 

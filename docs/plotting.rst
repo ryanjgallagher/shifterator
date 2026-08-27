@@ -81,6 +81,13 @@ Display Options
      - ``False``
      - If ``True``, all bars face the same direction (used by JSD shifts).
        Colors indicate which system the type is more associated with
+   * - ``label_total_with_system_names``
+     - ``False``
+     - If ``True``, the two cumulative bars at the top of a non-detailed plot
+       are labeled with ``system_names`` instead of being unlabeled. Enabled by
+       default for ``ProportionShift``, where negative/positive contributions
+       correspond to types more prevalent in system 1/system 2. Unlike
+       ``all_pos_contributions``, this does not change bar directions
    * - ``show_score_diffs``
      - (auto)
      - Whether score difference bars (△/▽) are shown. Automatically set to
